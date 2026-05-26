@@ -56,6 +56,20 @@ The app utilizes `localStorage` for persistent data without a backend:
 - `v13_activities`: Audit logs.
 - `lang` / `theme`: User preferences.
 
+v12 data (if present) is automatically merged into v13 on first load.
+
+---
+
+## 🛡️ v13.1 Hardening Notes
+
+- **XSS-safe rendering**: all user-supplied fields (task names, tags, comments, attachments, member names, log entries) are HTML-escaped; inline `onclick` interpolation has been replaced with delegated `data-action` handlers.
+- **URL allowlist**: attachment/image URLs are filtered to `http(s)`/`mailto` — `javascript:` / `data:` schemes render as inert.
+- **Resilient storage**: corrupt `localStorage` no longer halts boot; quota errors are surfaced to the user.
+- **Timer & chart lifecycle**: the 1-second timer interval only runs while a task modal is open; Chart.js instances are destroyed on dashboard close. Switching between tasks finalizes the previous task's running timer.
+- **a11y**: icon-only buttons have `aria-label`s; modals trap focus; priority indicators include emoji (not color alone).
+- **Search debounce**: keyword/tag filters debounce 300 ms to stay smooth on large boards.
+- **Import safety**: malformed JSON imports show an error instead of crashing.
+
 ---
 
 ## 🎨 設計特色 (Design Highlights)
