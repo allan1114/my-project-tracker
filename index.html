@@ -340,6 +340,30 @@
         } catch (e) { /* fall through */ }
         return '#';
     }
+    function safeStorageGet(key, fallback) {
+        try {
+            const raw = localStorage.getItem(key);
+            if (raw == null) return fallback;
+            const parsed = JSON.parse(raw);
+            return parsed == null ? fallback : parsed;
+        } catch (e) {
+            console.warn('[storage] corrupt key', key, e);
+            return fallback;
+        }
+    }
+    function safeStorageSet(key, val) {
+        try {
+            localStorage.setItem(key, JSON.stringify(val));
+            return true;
+        } catch (e) {
+            console.error('[storage] write failed', key, e);
+            alert(currentLang === 'zh'
+                ? '儲存失敗：瀏覽器空間不足或被封鎖'
+                : 'Save failed: storage quota exceeded or blocked');
+            return false;
+        }
+    }
+    function getCurrentTask() { return tasks.find(k => k.id === currentTaskId) || null; }
 
     // ---------- Delegated click dispatch (replaces inline onclick="fn('${id}')") ----------
     document.addEventListener('click', (e) => {
@@ -353,27 +377,45 @@
         else if (a === 'removeAttach') removeAttachment(Number(el.dataset.idx));
     });
 
-    let tasks = JSON.parse(localStorage.getItem('v13_tasks')) || [];
-    let members = JSON.parse(localStorage.getItem('v13_members')) || ['Me'];
-    let activities = JSON.parse(localStorage.getItem('v13_activities')) || [];
+    let tasks      = safeStorageGet('v13_tasks', []);
+    let members    = safeStorageGet('v13_members', ['Me']);
+    let activities = safeStorageGet('v13_activities', []);
 
-    // Migration v12
-    if (tasks.length === 0 && localStorage.getItem('v12_tasks')) {
-        tasks = JSON.parse(localStorage.getItem('v12_tasks'));
-        members = JSON.parse(localStorage.getItem('v12_members'));
-    }
+    // Migration v12 -> v13: merge any v12 items not already present (by id), then drop v12 keys.
+    (function migrateV12() {
+        const v12tasks   = safeStorageGet('v12_tasks', null);
+        const v12members = safeStorageGet('v12_members', null);
+        let touched = false;
+        if (Array.isArray(v12tasks)) {
+            const existing = new Set(tasks.map(t => t && t.id));
+            v12tasks.forEach(t => { if (t && t.id && !existing.has(t.id)) { tasks.push(t); touched = true; } });
+            try { localStorage.removeItem('v12_tasks'); } catch (e) {}
+        }
+        if (Array.isArray(v12members)) {
+            v12members.forEach(m => { if (m && !members.includes(m)) { members.push(m); touched = true; } });
+            try { localStorage.removeItem('v12_members'); } catch (e) {}
+        }
+        if (touched) {
+            safeStorageSet('v13_tasks', tasks);
+            safeStorageSet('v13_members', members);
+        }
+    })();
+
     if (localStorage.getItem('theme') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
     document.getElementById('t-end').valueAsDate = new Date();
 
     let calDate = new Date();
     let isSorted = false;
     let isFocus = false;
+    let timerHandle = null;
+    function startTimerLoop() { if (!timerHandle) timerHandle = setInterval(updateTimerDisplay, 1000); }
+    function stopTimerLoop() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
 
-    applyLanguage(); renderMembers(); renderKanban(); setInterval(updateTimerDisplay, 1000);
+    applyLanguage(); renderMembers(); renderKanban();
 
     // Shortcuts
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') document.querySelectorAll('.modal.active').forEach(m => m.classList.remove('active'));
+        if (e.key === 'Escape') document.querySelectorAll('.modal.active').forEach(m => closeModal(m.id));
         if (e.key.toLowerCase() === 'n' && !e.target.matches('input,textarea')) document.getElementById('t-name').focus();
     });
 
@@ -512,13 +554,26 @@
     }
 
     let currentTaskId=null;
-    function openTaskModal(id){ 
-        currentTaskId=id; const t=tasks.find(k=>k.id===id); 
-        document.getElementById('m-title').innerText=t.name; document.getElementById('m-status').value=t.status; 
-        document.getElementById('m-assignee').value=t.assignee; document.getElementById('m-priority').value=t.priority; 
-        document.getElementById('m-tags').value=t.tags?t.tags.join(', '):''; document.getElementById('m-img').value=t.img||''; 
-        document.getElementById('m-desc').value=t.desc||''; 
-        renderChecklist(t); renderComments(t); renderAttachments(t); updateTimerUI(t); document.getElementById('taskModal').classList.add('active'); 
+    function openTaskModal(id){
+        // Finalize a running timer on a previously-open task before switching.
+        if (currentTaskId && currentTaskId !== id) {
+            const prev = tasks.find(k => k.id === currentTaskId);
+            if (prev && prev.timer && prev.timer.isRunning) {
+                prev.timer.totalSeconds += Math.floor((Date.now() - prev.timer.lastStartTime) / 1000);
+                prev.timer.isRunning = false;
+                safeStorageSet('v13_tasks', tasks);
+            }
+        }
+        currentTaskId = id;
+        const t = tasks.find(k => k.id === id);
+        if (!t) { currentTaskId = null; return; }
+        document.getElementById('m-title').innerText=t.name; document.getElementById('m-status').value=t.status;
+        document.getElementById('m-assignee').value=t.assignee; document.getElementById('m-priority').value=t.priority;
+        document.getElementById('m-tags').value=t.tags?t.tags.join(', '):''; document.getElementById('m-img').value=t.img||'';
+        document.getElementById('m-desc').value=t.desc||'';
+        renderChecklist(t); renderComments(t); renderAttachments(t); updateTimerUI(t);
+        document.getElementById('taskModal').classList.add('active');
+        startTimerLoop();
     }
 
     // Attachments Logic (Simulated)
@@ -536,7 +591,7 @@
     function fakeUploadFile(input) {
         if(input.files && input.files[0]) {
             const file = input.files[0];
-            const t = tasks.find(k => k.id === currentTaskId);
+            const t = getCurrentTask(); if (!t) return;
             if(!t.attachments) t.attachments = [];
             // Simulate upload by storing name and a fake local URL
             t.attachments.push({ name: file.name, url: '#', type: 'file' });
@@ -548,7 +603,7 @@
         const input = document.getElementById('attach-link');
         const url = input.value.trim();
         if(url) {
-            const t = tasks.find(k => k.id === currentTaskId);
+            const t = getCurrentTask(); if (!t) return;
             if(!t.attachments) t.attachments = [];
             t.attachments.push({ name: url, url: url, type: 'link' });
             input.value = '';
@@ -556,24 +611,24 @@
         }
     }
     function removeAttachment(idx) {
-        const t = tasks.find(k => k.id === currentTaskId);
+        const t = getCurrentTask(); if (!t || !t.attachments) return;
         t.attachments.splice(idx, 1);
         saveAndRender(); renderAttachments(t);
     }
 
     // Timer, Comments, Checklist, etc (Same as v12)
-    function toggleTimer(){ const t=tasks.find(k=>k.id===currentTaskId); if(!t.timer)t.timer={totalSeconds:0,isRunning:false}; if(t.timer.isRunning){ t.timer.totalSeconds+=Math.floor((Date.now()-t.timer.lastStartTime)/1000); t.timer.isRunning=false; }else{ t.timer.isRunning=true; t.timer.lastStartTime=Date.now(); } saveAndRender(); updateTimerUI(t); }
-    function updateTimerUI(t){ if(!t.timer)t.timer={totalSeconds:0,isRunning:false}; const btn=document.getElementById('m-timer-btn'); btn.innerText=t.timer.isRunning?"⏸ Pause":"▶ Start"; btn.style.background=t.timer.isRunning?"#ef4444":"var(--primary)"; updateTimerDisplay(); }
-    function updateTimerDisplay(){ if(!currentTaskId||!document.getElementById('taskModal').classList.contains('active'))return; const t=tasks.find(k=>k.id===currentTaskId); if(!t||!t.timer)return; let total=t.timer.totalSeconds; if(t.timer.isRunning)total+=Math.floor((Date.now()-t.timer.lastStartTime)/1000); const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60; document.getElementById('m-time-display').innerText=`${h}h ${m}m ${s}s`; }
-    function cloneTask(){ const t=tasks.find(k=>k.id===currentTaskId); const n=JSON.parse(JSON.stringify(t)); n.id='t'+Date.now(); n.name+=" (Copy)"; n.status='todo'; n.timer={totalSeconds:0,isRunning:false}; n.comments=[]; tasks.push(n); saveAndRender(); alert('Cloned'); closeModal('taskModal'); }
+    function toggleTimer(){ const t=getCurrentTask(); if(!t) return; if(!t.timer)t.timer={totalSeconds:0,isRunning:false}; if(t.timer.isRunning){ t.timer.totalSeconds+=Math.floor((Date.now()-t.timer.lastStartTime)/1000); t.timer.isRunning=false; }else{ t.timer.isRunning=true; t.timer.lastStartTime=Date.now(); } saveAndRender(); updateTimerUI(t); }
+    function updateTimerUI(t){ if(!t) return; if(!t.timer)t.timer={totalSeconds:0,isRunning:false}; const btn=document.getElementById('m-timer-btn'); btn.innerText=t.timer.isRunning?"⏸ Pause":"▶ Start"; btn.style.background=t.timer.isRunning?"#ef4444":"var(--primary)"; updateTimerDisplay(); }
+    function updateTimerDisplay(){ if(!currentTaskId||!document.getElementById('taskModal').classList.contains('active'))return; const t=getCurrentTask(); if(!t||!t.timer)return; let total=t.timer.totalSeconds; if(t.timer.isRunning)total+=Math.floor((Date.now()-t.timer.lastStartTime)/1000); const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60; document.getElementById('m-time-display').innerText=`${h}h ${m}m ${s}s`; }
+    function cloneTask(){ const t=getCurrentTask(); if(!t) return; const n=JSON.parse(JSON.stringify(t)); n.id='t'+Date.now(); n.name+=" (Copy)"; n.status='todo'; n.timer={totalSeconds:0,isRunning:false}; n.comments=[]; tasks.push(n); saveAndRender(); alert('Cloned'); closeModal('taskModal'); }
     function renderChecklist(t){ const ul=document.getElementById('m-checklist'); ul.innerHTML=''; let d=0; (t.checklist||[]).forEach((i,x)=>{ if(i.done)d++; ul.innerHTML+=`<li class="checklist-item ${i.done?'done':''}"><input type="checkbox" ${i.done?'checked':''} onchange="toggleCheckItem(${x})"><span style="flex:1">${escapeHtml(i.text)}</span><button data-action="remCheck" data-idx="${x}" aria-label="Remove item" style="color:red;border:none;background:none">×</button></li>` }); document.getElementById('m-progress-bar').style.width=(t.checklist&&t.checklist.length>0?(d/t.checklist.length)*100:0)+'%'; }
-    function addCheckItem(){ const v=document.getElementById('new-check-item').value; if(v){ tasks.find(k=>k.id===currentTaskId).checklist.push({text:v,done:false}); document.getElementById('new-check-item').value=''; saveAndRender(); renderChecklist(tasks.find(k=>k.id===currentTaskId)); } }
-    function toggleCheckItem(i){ const t=tasks.find(k=>k.id===currentTaskId); t.checklist[i].done=!t.checklist[i].done; saveAndRender(); renderChecklist(t); }
-    function remCheck(i){ const t=tasks.find(k=>k.id===currentTaskId); t.checklist.splice(i,1); saveAndRender(); renderChecklist(t); }
+    function addCheckItem(){ const v=document.getElementById('new-check-item').value; if(v){ const t=getCurrentTask(); if(!t) return; if(!t.checklist) t.checklist=[]; t.checklist.push({text:v,done:false}); document.getElementById('new-check-item').value=''; saveAndRender(); renderChecklist(t); } }
+    function toggleCheckItem(i){ const t=getCurrentTask(); if(!t||!t.checklist||!t.checklist[i]) return; t.checklist[i].done=!t.checklist[i].done; saveAndRender(); renderChecklist(t); }
+    function remCheck(i){ const t=getCurrentTask(); if(!t||!t.checklist||!t.checklist[i]) return; t.checklist.splice(i,1); saveAndRender(); renderChecklist(t); }
     function renderComments(t) { if(!t.comments) t.comments = []; document.getElementById('comment-list').innerHTML = t.comments.map(c => `<li class="comment-item"><div class="comment-header"><span>${escapeHtml(c.author || 'Unknown')}</span> <span>${escapeHtml(c.time)}</span></div><div>${escapeHtml(c.text)}</div></li>`).join(''); }
-    function addComment() { const input = document.getElementById('new-comment'); const text = input.value.trim(); const t = tasks.find(k => k.id === currentTaskId); const author = t.assignee || 'Me'; if(text) { if(!t.comments) t.comments = []; t.comments.push({ text, author, time: new Date().toLocaleString() }); input.value = ''; saveAndRender(); renderComments(t); } }
-    function updateTaskStatus(){ const t=tasks.find(k=>k.id===currentTaskId); t.status=document.getElementById('m-status').value; if(t.status==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); }
-    function updateTaskMeta(){ const t=tasks.find(k=>k.id===currentTaskId); t.assignee=document.getElementById('m-assignee').value; t.priority=document.getElementById('m-priority').value; t.img=document.getElementById('m-img').value; t.desc=document.getElementById('m-desc').value; t.tags=document.getElementById('m-tags').value.split(',').filter(x=>x); saveAndRender(); }
+    function addComment() { const input = document.getElementById('new-comment'); const text = input.value.trim(); const t = getCurrentTask(); if(!t) return; const author = t.assignee || 'Me'; if(text) { if(!t.comments) t.comments = []; t.comments.push({ text, author, time: new Date().toLocaleString() }); input.value = ''; saveAndRender(); renderComments(t); } }
+    function updateTaskStatus(){ const t=getCurrentTask(); if(!t) return; t.status=document.getElementById('m-status').value; if(t.status==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); }
+    function updateTaskMeta(){ const t=getCurrentTask(); if(!t) return; t.assignee=document.getElementById('m-assignee').value; t.priority=document.getElementById('m-priority').value; t.img=document.getElementById('m-img').value; t.desc=document.getElementById('m-desc').value; t.tags=document.getElementById('m-tags').value.split(',').filter(x=>x); saveAndRender(); }
     function deleteCurrentTask(){ if(confirm('Delete?')){ tasks=tasks.filter(k=>k.id!==currentTaskId); saveAndRender(); closeModal('taskModal'); } }
     function openTeamModal(){ renderTeamList(); document.getElementById('teamModal').classList.add('active'); }
     function addMember(){ const v=document.getElementById('new-member-name').value.trim(); if(v&&!members.includes(v)){ members.push(v); saveMembers(); renderTeamList(); renderMembers(); document.getElementById('new-member-name').value=''; } }
@@ -581,18 +636,43 @@
     function renderTeamList(){ document.getElementById('team-list-display').innerHTML=members.map(m=>`<button style="padding:5px 10px;border:1px solid #ddd;border-radius:15px;background:#fff" data-action="removeMember" data-name="${escapeHtml(m)}">${escapeHtml(m)} ×</button>`).join(''); }
     function renderMembers(){ const txt=currentLang==='zh'?'(未指派)':'(Unassigned)'; const all=currentLang==='zh'?'所有成員':'All Members'; const opts=`<option value="">${escapeHtml(txt)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); document.getElementById('t-assignee').innerHTML=opts; document.getElementById('m-assignee').innerHTML=opts; document.getElementById('s-member').innerHTML=`<option value="">${escapeHtml(all)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); }
     function allowDrop(ev){ev.preventDefault();}
-    function drop(ev){ ev.preventDefault(); const id=ev.dataTransfer.getData("text"); const t=ev.target.closest('.task-list'); if(t){ const task=tasks.find(k=>k.id===id); if(task.status!==t.id){ task.status=t.id; if(t.id==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); } } }
+    function drop(ev){ ev.preventDefault(); const id=ev.dataTransfer.getData("text"); const t=ev.target.closest('.task-list'); if(!t) return; const task=tasks.find(k=>k.id===id); if(!task) return; if(task.status!==t.id){ task.status=t.id; if(t.id==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); } }
     function openDashboard(){ document.getElementById('dashboardModal').classList.add('active'); renderCharts(); }
     function renderCharts(){ if(window.C1)window.C1.destroy(); if(window.C2)window.C2.destroy(); const sData=['todo','inprogress','onhold','blocked','done'].map(s=>tasks.filter(t=>t.status===s).length); const mCount={}; members.forEach(m=>mCount[m]=0); mCount['Unassigned']=0; tasks.forEach(t=>{mCount[t.assignee||'Unassigned']++}); window.C1=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:['Todo','In Prog','Hold','Blocked','Done'],datasets:[{data:sData,backgroundColor:['#cbd5e1','#3b82f6','#f59e0b','#ef4444','#10b981']}]}}); window.C2=new Chart(document.getElementById('memberChart'),{type:'bar',data:{labels:Object.keys(mCount),datasets:[{label:'Tasks',data:Object.values(mCount),backgroundColor:'#4f46e5'}]}}); }
-    function logActivity(msg){ activities.unshift({msg,time:new Date().toLocaleString()}); if(activities.length>50)activities.pop(); localStorage.setItem('v13_activities',JSON.stringify(activities)); }
+    function logActivity(msg){ activities.unshift({msg,time:new Date().toLocaleString()}); if(activities.length>50)activities.pop(); safeStorageSet('v13_activities',activities); }
     function openLogModal(){ document.getElementById('log-list').innerHTML=activities.map(a=>`<li class="log-item"><span>${escapeHtml(a.msg)}</span> <span style="font-size:10px;color:#999">${escapeHtml(a.time)}</span></li>`).join(''); document.getElementById('logModal').classList.add('active'); }
-    function clearLog(){ activities=[]; localStorage.setItem('v13_activities','[]'); openLogModal(); }
-    function saveAndRender(){ localStorage.setItem('v13_tasks',JSON.stringify(tasks)); renderKanban(); }
-    function saveMembers(){ localStorage.setItem('v13_members',JSON.stringify(members)); }
-    function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+    function clearLog(){ activities=[]; safeStorageSet('v13_activities',[]); openLogModal(); }
+    function saveAndRender(){ safeStorageSet('v13_tasks',tasks); renderKanban(); }
+    function saveMembers(){ safeStorageSet('v13_members',members); }
+    function closeDashboard(){ if(window.C1){ window.C1.destroy(); window.C1=null; } if(window.C2){ window.C2.destroy(); window.C2=null; } }
+    function closeModal(id){
+        const el=document.getElementById(id); if(!el) return;
+        el.classList.remove('active');
+        if(id==='taskModal'){ stopTimerLoop(); currentTaskId=null; }
+        if(id==='dashboardModal'){ closeDashboard(); }
+    }
     function toggleTheme(){ const d=document.documentElement; const isDark=d.getAttribute('data-theme')==='dark'; d.setAttribute('data-theme',isDark?'light':'dark'); localStorage.setItem('theme',isDark?'light':'dark'); }
     function exportData(){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify({tasks,members,activities})],{type:'application/json'})); a.download='backup_v13.json'; a.click(); }
-    function importData(e){ const r=new FileReader(); r.onload=(ev)=>{ const d=JSON.parse(ev.target.result); if(d.tasks)tasks=d.tasks; if(d.members)members=d.members; saveAndRender(); saveMembers(); renderMembers(); alert('Restored!'); }; r.readAsText(e.target.files[0]); }
+    function importData(e){
+        const file = e.target.files && e.target.files[0]; if(!file) return;
+        const r = new FileReader();
+        r.onload = (ev) => {
+            try {
+                const d = JSON.parse(ev.target.result);
+                if (d && Array.isArray(d.tasks))   tasks   = d.tasks;
+                if (d && Array.isArray(d.members)) members = d.members;
+                saveAndRender(); saveMembers(); renderMembers();
+                alert(currentLang==='zh' ? '已還原!' : 'Restored!');
+            } catch (err) {
+                console.error('[import] parse failed', err);
+                alert(currentLang==='zh' ? '匯入失敗：檔案格式錯誤' : 'Import failed: invalid JSON file');
+            } finally {
+                e.target.value = ''; // allow re-import of same file
+            }
+        };
+        r.onerror = () => alert(currentLang==='zh' ? '讀取檔案失敗' : 'File read failed');
+        r.readAsText(file);
+    }
 </script>
 </body>
 </html>
