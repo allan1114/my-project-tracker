@@ -144,13 +144,13 @@
         
         <div style="width: 1px; height: 20px; background: var(--border); margin: 0 5px;"></div>
 
-        <button class="nav-btn" onclick="toggleLanguage()">🌐 <span id="lang-btn-text">中/EN</span></button>
-        <button class="nav-btn" onclick="openDashboard()"><span data-i18n="nav_dash">📊</span></button>
-        <button class="nav-btn" onclick="openLogModal()"><span data-i18n="nav_log">📜</span></button>
-        <button class="nav-btn" onclick="openTeamModal()"><span data-i18n="nav_team">👥</span></button>
-        <button class="nav-btn" onclick="toggleTheme()">🌙</button>
-        <button class="nav-btn" onclick="exportData()">⬇️</button>
-        <button class="nav-btn" onclick="document.getElementById('fileInput').click()">⬆️</button>
+        <button class="nav-btn" onclick="toggleLanguage()" aria-label="Toggle language">🌐 <span id="lang-btn-text">中/EN</span></button>
+        <button class="nav-btn" onclick="openDashboard()" aria-label="Open dashboard"><span data-i18n="nav_dash">📊</span></button>
+        <button class="nav-btn" onclick="openLogModal()" aria-label="Open activity log"><span data-i18n="nav_log">📜</span></button>
+        <button class="nav-btn" onclick="openTeamModal()" aria-label="Open team settings"><span data-i18n="nav_team">👥</span></button>
+        <button class="nav-btn" onclick="toggleTheme()" aria-label="Toggle theme">🌙</button>
+        <button class="nav-btn" onclick="exportData()" aria-label="Export backup">⬇️</button>
+        <button class="nav-btn" onclick="document.getElementById('fileInput').click()" aria-label="Import backup">⬆️</button>
         <input type="file" id="fileInput" accept=".json" style="display: none;" onchange="importData(event)">
     </div>
 </nav>
@@ -162,7 +162,7 @@
                 <div class="panel-header" data-i18n="search_title">🔍 搜尋與篩選</div>
                 <div class="form-row">
                     <div class="input-group" style="flex:2">
-                        <input type="text" id="s-text" data-ph="ph_keyword" placeholder="輸入關鍵字..." oninput="renderKanban()">
+                        <input type="text" id="s-text" data-ph="ph_keyword" placeholder="輸入關鍵字..." oninput="onFilterInput()" aria-label="Search keyword">
                     </div>
                     <div class="input-group">
                         <select id="s-member" onchange="renderKanban()"><option value="" data-i18n="all_members">所有成員</option></select>
@@ -170,7 +170,7 @@
                 </div>
                 <div class="form-row">
                     <div class="input-group">
-                        <input type="text" id="s-tag" data-ph="ph_filter_tag" placeholder="過濾標籤..." oninput="renderKanban()">
+                        <input type="text" id="s-tag" data-ph="ph_filter_tag" placeholder="過濾標籤..." oninput="onFilterInput()" aria-label="Filter by tag">
                     </div>
                 </div>
             </div>
@@ -242,7 +242,7 @@
 
 <div id="taskModal" class="modal">
     <div class="modal-content">
-        <button class="close-btn" onclick="closeModal('taskModal')">×</button>
+        <button class="close-btn" onclick="closeModal('taskModal')" aria-label="Close">×</button>
         <div style="display:flex; justify-content:space-between; align-items:center; margin-right:30px;">
             <h2 id="m-title" style="margin:0;">Task Title</h2>
             <button onclick="cloneTask()" style="background:#e0e7ff; color:var(--primary); border:none; padding:5px 10px; border-radius:4px; font-size:12px;" data-i18n="btn_clone">©️ 複製</button>
@@ -256,7 +256,7 @@
         <div class="form-row">
             <div class="input-group"><label data-i18n="lbl_status">狀態</label><select id="m-status" onchange="updateTaskStatus()"><option value="todo">📋 To Do</option><option value="inprogress">⚡ In Progress</option><option value="onhold">⏸️ On Hold</option><option value="blocked">⛔ Blocked</option><option value="done">✅ Done</option></select></div>
             <div class="input-group"><label data-i18n="lbl_assignee">負責人</label><select id="m-assignee" onchange="updateTaskMeta()"></select></div>
-            <div class="input-group"><label data-i18n="lbl_priority">優先級</label><select id="m-priority" onchange="updateTaskMeta()"><option value="High">High</option><option value="Medium">Medium</option><option value="Low">Low</option></select></div>
+            <div class="input-group"><label data-i18n="lbl_priority">優先級</label><select id="m-priority" onchange="updateTaskMeta()"><option value="High">🔴 High</option><option value="Medium">🟡 Medium</option><option value="Low">🟢 Low</option></select></div>
         </div>
 
         <div class="form-row">
@@ -313,9 +313,9 @@
     </div>
 </div>
 
-<div id="dashboardModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('dashboardModal')">×</button><h2 data-i18n="nav_dash">📈 儀表板</h2><div style="display:flex; gap:20px; flex-wrap:wrap;"><div style="flex:1; min-width:250px;"><h4 data-i18n="chart_status">任務狀態</h4><div class="chart-container"><canvas id="statusChart"></canvas></div></div><div style="flex:1; min-width:250px;"><h4 data-i18n="chart_workload">工作量</h4><div class="chart-container"><canvas id="memberChart"></canvas></div></div></div></div></div>
-<div id="logModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('logModal')">×</button><div style="display:flex; justify-content:space-between; align-items:center;"><h2 data-i18n="log_title">📜 日誌</h2><button onclick="clearLog()" style="font-size:12px; color:red; background:none; border:none;" data-i18n="btn_clear_log">清空</button></div><ul id="log-list" class="log-list"></ul></div></div>
-<div id="teamModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('teamModal')">×</button><h2 data-i18n="team_title">👥 設定隊員</h2><div style="display:flex; gap:10px; margin-bottom:15px;"><input type="text" id="new-member-name" data-ph="ph_name" placeholder="輸入名字..." style="flex:1;"><button class="btn-primary" style="width:auto;" onclick="addMember()" data-i18n="btn_join">加入</button></div><div id="team-list-display" style="display:flex; flex-wrap:wrap; gap:10px;"></div></div></div>
+<div id="dashboardModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('dashboardModal')" aria-label="Close">×</button><h2 data-i18n="nav_dash">📈 儀表板</h2><div style="display:flex; gap:20px; flex-wrap:wrap;"><div style="flex:1; min-width:250px;"><h4 data-i18n="chart_status">任務狀態</h4><div class="chart-container"><canvas id="statusChart"></canvas></div></div><div style="flex:1; min-width:250px;"><h4 data-i18n="chart_workload">工作量</h4><div class="chart-container"><canvas id="memberChart"></canvas></div></div></div></div></div>
+<div id="logModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('logModal')" aria-label="Close">×</button><div style="display:flex; justify-content:space-between; align-items:center;"><h2 data-i18n="log_title">📜 日誌</h2><button onclick="clearLog()" style="font-size:12px; color:red; background:none; border:none;" data-i18n="btn_clear_log">清空</button></div><ul id="log-list" class="log-list"></ul></div></div>
+<div id="teamModal" class="modal"><div class="modal-content"><button class="close-btn" onclick="closeModal('teamModal')" aria-label="Close">×</button><h2 data-i18n="team_title">👥 設定隊員</h2><div style="display:flex; gap:10px; margin-bottom:15px;"><input type="text" id="new-member-name" data-ph="ph_name" placeholder="輸入名字..." style="flex:1;"><button class="btn-primary" style="width:auto;" onclick="addMember()" data-i18n="btn_join">加入</button></div><div id="team-list-display" style="display:flex; flex-wrap:wrap; gap:10px;"></div></div></div>
 <div class="shortcuts-hint">Hotkeys: [N] New Task | [Esc] Close Modal</div>
 
 <script>
@@ -364,6 +364,43 @@
         }
     }
     function getCurrentTask() { return tasks.find(k => k.id === currentTaskId) || null; }
+    function localDateStr(d) {
+        const dt = d ? new Date(d) : new Date();
+        return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+    }
+    function debounce(fn, ms) { let h; return function (...args) { clearTimeout(h); h = setTimeout(() => fn.apply(this, args), ms); }; }
+    function clampStr(s, max) { return String(s || '').slice(0, max); }
+    function priorityEmoji(p) { return p === 'High' ? '🔴' : p === 'Low' ? '🟢' : '🟡'; }
+    const MAX_NAME_LEN = 200;
+    const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+
+    // ---------- Focus trap for modals ----------
+    let _trapState = null;
+    function trapFocus(modal) {
+        if (!modal) return;
+        const prevFocus = document.activeElement;
+        const sel = 'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])';
+        const handler = (e) => {
+            if (e.key !== 'Tab') return;
+            const f = modal.querySelectorAll(sel);
+            if (!f.length) return;
+            const first = f[0], last = f[f.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        };
+        modal.addEventListener('keydown', handler);
+        _trapState = { modal, handler, prevFocus };
+        const firstFocusable = modal.querySelector(sel);
+        if (firstFocusable) firstFocusable.focus();
+    }
+    function releaseFocusTrap() {
+        if (!_trapState) return;
+        _trapState.modal.removeEventListener('keydown', _trapState.handler);
+        if (_trapState.prevFocus && _trapState.prevFocus.focus) {
+            try { _trapState.prevFocus.focus(); } catch (e) {}
+        }
+        _trapState = null;
+    }
 
     // ---------- Delegated click dispatch (replaces inline onclick="fn('${id}')") ----------
     document.addEventListener('click', (e) => {
@@ -412,6 +449,8 @@
     function stopTimerLoop() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
 
     applyLanguage(); renderMembers(); renderKanban();
+    const debouncedRender = debounce(renderKanban, 300);
+    function onFilterInput() { debouncedRender(); }
 
     // Shortcuts
     document.addEventListener('keydown', (e) => {
@@ -461,7 +500,7 @@
 
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = localDateStr();
 
         // Empty cells
         for(let i=0; i<firstDay; i++) body.innerHTML += `<div class="calendar-day" style="background:transparent;border:none;"></div>`;
@@ -489,16 +528,18 @@
     // Tag Menu
     function toggleTagMenu(id) {
         const menu = document.getElementById(id);
-        const isVisible = menu.style.display === 'block';
-        document.querySelectorAll('.tag-menu').forEach(el => el.style.display = 'none');
-        menu.style.display = isVisible ? 'none' : 'block';
+        const wasOpen = menu.classList.contains('show');
+        document.querySelectorAll('.tag-menu').forEach(el => el.classList.remove('show'));
+        if (!wasOpen) menu.classList.add('show');
     }
-    document.addEventListener('click', function(e) { if (!e.target.closest('.tag-wrapper')) document.querySelectorAll('.tag-menu').forEach(el => el.style.display = 'none'); });
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('.tag-wrapper')) document.querySelectorAll('.tag-menu').forEach(el => el.classList.remove('show'));
+    });
     function addTag(inputId, tag, isUpdateMeta = false) {
         const input = document.getElementById(inputId);
         let currentTags = input.value.split(',').map(t=>t.trim()).filter(t=>t);
         if(!currentTags.includes(tag)) { currentTags.push(tag); input.value = currentTags.join(', '); if(isUpdateMeta) updateTaskMeta(); }
-        document.querySelectorAll('.tag-menu').forEach(el => el.style.display = 'none');
+        document.querySelectorAll('.tag-menu').forEach(el => el.classList.remove('show'));
     }
 
     function toggleLanguage() { currentLang = currentLang === 'zh' ? 'en' : 'zh'; localStorage.setItem('lang', currentLang); applyLanguage(); }
@@ -510,7 +551,7 @@
     }
 
     function addTask() {
-        const name = document.getElementById('t-name').value;
+        const name = clampStr(document.getElementById('t-name').value.trim(), MAX_NAME_LEN);
         if (!name) return alert(currentLang==='zh'?"請輸入名稱":"Name required");
         const tags = document.getElementById('t-tags').value.split(',').map(t=>t.trim()).filter(t=>t);
         tasks.push({ id:'t'+Date.now(), name, priority:document.getElementById('t-priority').value, assignee:document.getElementById('t-assignee').value||'', end:document.getElementById('t-end').value, tags, img:document.getElementById('t-img').value, status:'todo', checklist:[], timer:{totalSeconds:0,isRunning:false}, desc:'', comments:[], attachments:[] });
@@ -525,9 +566,9 @@
 
         // Filter
         let filteredTasks = tasks.filter(t => {
-            if(sT && !t.name.toLowerCase().includes(sT)) return false;
+            if(sT && !String(t.name||'').toLowerCase().includes(sT)) return false;
             if(sM && t.assignee !== sM) return false;
-            if(sTg && (!t.tags || !t.tags.some(Tag=>Tag.toLowerCase().includes(sTg)))) return false;
+            if(sTg && (!t.tags || !t.tags.some(tag=>String(tag).toLowerCase().includes(sTg)))) return false;
             return true;
         });
 
@@ -537,9 +578,11 @@
             filteredTasks.sort((a,b) => pMap[b.priority] - pMap[a.priority]);
         }
 
+        const today = localDateStr();
         filteredTasks.forEach(t => {
             c[t.status]++;
-            const card=document.createElement('div'); card.className='task-card '+(t.status!=='done'&&t.end&&new Date(t.end)<new Date().setHours(0,0,0,0)?'overdue':'');
+            const overdue = (t.status!=='done' && t.end && t.end < today) ? 'overdue' : '';
+            const card=document.createElement('div'); card.className='task-card '+overdue;
             card.draggable=true; card.id=t.id; card.onclick=()=>openTaskModal(t.id); card.ondragstart=(ev)=>ev.dataTransfer.setData("text",ev.target.id);
             const img=t.img?`<img src="${escapeHtml(safeUrl(t.img))}" class="card-img show" onerror="this.style.display='none'">`:'';
             const tags=t.tags?t.tags.map(tag=>`<span class="tag">${escapeHtml(tag)}</span>`).join(''):'';
@@ -547,7 +590,8 @@
             const av=t.assignee?`<div class="avatar">${escapeHtml(String(t.assignee)[0]||'').toUpperCase()}</div>`:'';
             const attIcon = (t.attachments && t.attachments.length>0) ? '📎' : '';
             const priority = String(t.priority||'');
-            card.innerHTML=`${img}<div class="card-tags">${tags}</div><div class="card-top"><span class="badge bg-${escapeHtml(priority.toLowerCase())}">${escapeHtml(priority)}</span> <span>${(t.timer&&t.timer.totalSeconds>0)?'⏱️':''} ${attIcon}</span></div><div style="font-weight:600;font-size:14px;margin-bottom:5px;">${escapeHtml(t.name)}</div><div class="card-meta"><div class="meta-left">${t.checklist&&t.checklist.length>0?'☑ '+check:''} ${(t.comments&&t.comments.length>0)?'💬 '+t.comments.length:''}</div>${av}</div>`;
+            const pEm = priorityEmoji(priority);
+            card.innerHTML=`${img}<div class="card-tags">${tags}</div><div class="card-top"><span class="badge bg-${escapeHtml(priority.toLowerCase())}">${pEm} ${escapeHtml(priority)}</span> <span>${(t.timer&&t.timer.totalSeconds>0)?'⏱️':''} ${attIcon}</span></div><div style="font-weight:600;font-size:14px;margin-bottom:5px;">${escapeHtml(t.name)}</div><div class="card-meta"><div class="meta-left">${t.checklist&&t.checklist.length>0?'☑ '+check:''} ${(t.comments&&t.comments.length>0)?'💬 '+t.comments.length:''}</div>${av}</div>`;
             document.getElementById(t.status).appendChild(card);
         });
         Object.keys(c).forEach(k=>document.getElementById('c-'+k).innerText=c[k]);
@@ -572,8 +616,10 @@
         document.getElementById('m-tags').value=t.tags?t.tags.join(', '):''; document.getElementById('m-img').value=t.img||'';
         document.getElementById('m-desc').value=t.desc||'';
         renderChecklist(t); renderComments(t); renderAttachments(t); updateTimerUI(t);
-        document.getElementById('taskModal').classList.add('active');
+        const modal = document.getElementById('taskModal');
+        modal.classList.add('active');
         startTimerLoop();
+        trapFocus(modal);
     }
 
     // Attachments Logic (Simulated)
@@ -591,10 +637,14 @@
     function fakeUploadFile(input) {
         if(input.files && input.files[0]) {
             const file = input.files[0];
+            if (file.size > MAX_FILE_SIZE_BYTES) {
+                alert(currentLang==='zh' ? `檔案太大 (上限 ${MAX_FILE_SIZE_BYTES/1024/1024} MB)` : `File too large (max ${MAX_FILE_SIZE_BYTES/1024/1024} MB)`);
+                input.value = ''; return;
+            }
             const t = getCurrentTask(); if (!t) return;
             if(!t.attachments) t.attachments = [];
             // Simulate upload by storing name and a fake local URL
-            t.attachments.push({ name: file.name, url: '#', type: 'file' });
+            t.attachments.push({ name: clampStr(file.name, MAX_NAME_LEN), url: '#', type: 'file' });
             saveAndRender(); renderAttachments(t);
             input.value = ''; // clear
         }
@@ -626,21 +676,21 @@
     function toggleCheckItem(i){ const t=getCurrentTask(); if(!t||!t.checklist||!t.checklist[i]) return; t.checklist[i].done=!t.checklist[i].done; saveAndRender(); renderChecklist(t); }
     function remCheck(i){ const t=getCurrentTask(); if(!t||!t.checklist||!t.checklist[i]) return; t.checklist.splice(i,1); saveAndRender(); renderChecklist(t); }
     function renderComments(t) { if(!t.comments) t.comments = []; document.getElementById('comment-list').innerHTML = t.comments.map(c => `<li class="comment-item"><div class="comment-header"><span>${escapeHtml(c.author || 'Unknown')}</span> <span>${escapeHtml(c.time)}</span></div><div>${escapeHtml(c.text)}</div></li>`).join(''); }
-    function addComment() { const input = document.getElementById('new-comment'); const text = input.value.trim(); const t = getCurrentTask(); if(!t) return; const author = t.assignee || 'Me'; if(text) { if(!t.comments) t.comments = []; t.comments.push({ text, author, time: new Date().toLocaleString() }); input.value = ''; saveAndRender(); renderComments(t); } }
+    function addComment() { const input = document.getElementById('new-comment'); const text = input.value.trim(); const t = getCurrentTask(); if(!t) return; const author = t.assignee || 'Me'; if(text) { if(!t.comments) t.comments = []; const loc = currentLang==='zh' ? 'zh-HK' : 'en-US'; t.comments.push({ text, author, time: new Date().toLocaleString(loc) }); input.value = ''; saveAndRender(); renderComments(t); } }
     function updateTaskStatus(){ const t=getCurrentTask(); if(!t) return; t.status=document.getElementById('m-status').value; if(t.status==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); }
-    function updateTaskMeta(){ const t=getCurrentTask(); if(!t) return; t.assignee=document.getElementById('m-assignee').value; t.priority=document.getElementById('m-priority').value; t.img=document.getElementById('m-img').value; t.desc=document.getElementById('m-desc').value; t.tags=document.getElementById('m-tags').value.split(',').filter(x=>x); saveAndRender(); }
+    function updateTaskMeta(){ const t=getCurrentTask(); if(!t) return; t.assignee=document.getElementById('m-assignee').value; t.priority=document.getElementById('m-priority').value; t.img=document.getElementById('m-img').value; t.desc=document.getElementById('m-desc').value; t.tags=document.getElementById('m-tags').value.split(',').map(x=>x.trim()).filter(x=>x); saveAndRender(); }
     function deleteCurrentTask(){ if(confirm('Delete?')){ tasks=tasks.filter(k=>k.id!==currentTaskId); saveAndRender(); closeModal('taskModal'); } }
-    function openTeamModal(){ renderTeamList(); document.getElementById('teamModal').classList.add('active'); }
-    function addMember(){ const v=document.getElementById('new-member-name').value.trim(); if(v&&!members.includes(v)){ members.push(v); saveMembers(); renderTeamList(); renderMembers(); document.getElementById('new-member-name').value=''; } }
+    function openTeamModal(){ renderTeamList(); const m=document.getElementById('teamModal'); m.classList.add('active'); trapFocus(m); }
+    function addMember(){ const v=clampStr(document.getElementById('new-member-name').value.trim(), MAX_NAME_LEN); if(v&&!members.includes(v)){ members.push(v); saveMembers(); renderTeamList(); renderMembers(); document.getElementById('new-member-name').value=''; } }
     function removeMember(n){ if(confirm('Remove?')){ members=members.filter(m=>m!==n); saveMembers(); renderTeamList(); renderMembers(); } }
     function renderTeamList(){ document.getElementById('team-list-display').innerHTML=members.map(m=>`<button style="padding:5px 10px;border:1px solid #ddd;border-radius:15px;background:#fff" data-action="removeMember" data-name="${escapeHtml(m)}">${escapeHtml(m)} ×</button>`).join(''); }
     function renderMembers(){ const txt=currentLang==='zh'?'(未指派)':'(Unassigned)'; const all=currentLang==='zh'?'所有成員':'All Members'; const opts=`<option value="">${escapeHtml(txt)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); document.getElementById('t-assignee').innerHTML=opts; document.getElementById('m-assignee').innerHTML=opts; document.getElementById('s-member').innerHTML=`<option value="">${escapeHtml(all)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); }
     function allowDrop(ev){ev.preventDefault();}
     function drop(ev){ ev.preventDefault(); const id=ev.dataTransfer.getData("text"); const t=ev.target.closest('.task-list'); if(!t) return; const task=tasks.find(k=>k.id===id); if(!task) return; if(task.status!==t.id){ task.status=t.id; if(t.id==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); } }
-    function openDashboard(){ document.getElementById('dashboardModal').classList.add('active'); renderCharts(); }
+    function openDashboard(){ const m=document.getElementById('dashboardModal'); m.classList.add('active'); renderCharts(); trapFocus(m); }
     function renderCharts(){ if(window.C1)window.C1.destroy(); if(window.C2)window.C2.destroy(); const sData=['todo','inprogress','onhold','blocked','done'].map(s=>tasks.filter(t=>t.status===s).length); const mCount={}; members.forEach(m=>mCount[m]=0); mCount['Unassigned']=0; tasks.forEach(t=>{mCount[t.assignee||'Unassigned']++}); window.C1=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:['Todo','In Prog','Hold','Blocked','Done'],datasets:[{data:sData,backgroundColor:['#cbd5e1','#3b82f6','#f59e0b','#ef4444','#10b981']}]}}); window.C2=new Chart(document.getElementById('memberChart'),{type:'bar',data:{labels:Object.keys(mCount),datasets:[{label:'Tasks',data:Object.values(mCount),backgroundColor:'#4f46e5'}]}}); }
     function logActivity(msg){ activities.unshift({msg,time:new Date().toLocaleString()}); if(activities.length>50)activities.pop(); safeStorageSet('v13_activities',activities); }
-    function openLogModal(){ document.getElementById('log-list').innerHTML=activities.map(a=>`<li class="log-item"><span>${escapeHtml(a.msg)}</span> <span style="font-size:10px;color:#999">${escapeHtml(a.time)}</span></li>`).join(''); document.getElementById('logModal').classList.add('active'); }
+    function openLogModal(){ document.getElementById('log-list').innerHTML=activities.map(a=>`<li class="log-item"><span>${escapeHtml(a.msg)}</span> <span style="font-size:10px;color:#999">${escapeHtml(a.time)}</span></li>`).join(''); const m=document.getElementById('logModal'); m.classList.add('active'); trapFocus(m); }
     function clearLog(){ activities=[]; safeStorageSet('v13_activities',[]); openLogModal(); }
     function saveAndRender(){ safeStorageSet('v13_tasks',tasks); renderKanban(); }
     function saveMembers(){ safeStorageSet('v13_members',members); }
@@ -650,6 +700,7 @@
         el.classList.remove('active');
         if(id==='taskModal'){ stopTimerLoop(); currentTaskId=null; }
         if(id==='dashboardModal'){ closeDashboard(); }
+        releaseFocusTrap();
     }
     function toggleTheme(){ const d=document.documentElement; const isDark=d.getAttribute('data-theme')==='dark'; d.setAttribute('data-theme',isDark?'light':'dark'); localStorage.setItem('theme',isDark?'light':'dark'); }
     function exportData(){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify({tasks,members,activities})],{type:'application/json'})); a.download='backup_v13.json'; a.click(); }
