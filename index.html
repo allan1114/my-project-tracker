@@ -325,6 +325,34 @@
     };
     let currentLang = localStorage.getItem('lang') || 'zh';
 
+    // ---------- Safe rendering helpers ----------
+    function escapeHtml(s) {
+        if (s == null) return '';
+        return String(s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+    function safeUrl(url) {
+        if (!url) return '#';
+        try {
+            const u = new URL(url, window.location.href);
+            if (['http:', 'https:', 'mailto:'].includes(u.protocol)) return u.href;
+        } catch (e) { /* fall through */ }
+        return '#';
+    }
+
+    // ---------- Delegated click dispatch (replaces inline onclick="fn('${id}')") ----------
+    document.addEventListener('click', (e) => {
+        const el = e.target.closest('[data-action]');
+        if (!el) return;
+        const a = el.dataset.action;
+        if (a === 'openTask')          openTaskModal(el.dataset.id);
+        else if (a === 'removeMember') removeMember(el.dataset.name);
+        else if (a === 'toggleCheck')  toggleCheckItem(Number(el.dataset.idx));
+        else if (a === 'remCheck')     remCheck(Number(el.dataset.idx));
+        else if (a === 'removeAttach') removeAttachment(Number(el.dataset.idx));
+    });
+
     let tasks = JSON.parse(localStorage.getItem('v13_tasks')) || [];
     let members = JSON.parse(localStorage.getItem('v13_members')) || ['Me'];
     let activities = JSON.parse(localStorage.getItem('v13_activities')) || [];
@@ -405,7 +433,7 @@
             
             // Find tasks for this day
             tasks.filter(t => t.end === dateStr).forEach(t => {
-                html += `<div class="cal-task ${t.status==='done'?'done':''}" onclick="openTaskModal('${t.id}')">${t.name}</div>`;
+                html += `<div class="cal-task ${t.status==='done'?'done':''}" data-action="openTask" data-id="${escapeHtml(t.id)}">${escapeHtml(t.name)}</div>`;
             });
             html += `</div>`;
             body.innerHTML += html;
@@ -471,12 +499,13 @@
             c[t.status]++;
             const card=document.createElement('div'); card.className='task-card '+(t.status!=='done'&&t.end&&new Date(t.end)<new Date().setHours(0,0,0,0)?'overdue':'');
             card.draggable=true; card.id=t.id; card.onclick=()=>openTaskModal(t.id); card.ondragstart=(ev)=>ev.dataTransfer.setData("text",ev.target.id);
-            const img=t.img?`<img src="${t.img}" class="card-img show" onerror="this.style.display='none'">`:'';
-            const tags=t.tags?t.tags.map(Tag=>`<span class="tag">${Tag}</span>`).join(''):'';
+            const img=t.img?`<img src="${escapeHtml(safeUrl(t.img))}" class="card-img show" onerror="this.style.display='none'">`:'';
+            const tags=t.tags?t.tags.map(tag=>`<span class="tag">${escapeHtml(tag)}</span>`).join(''):'';
             const check=`${t.checklist?t.checklist.filter(i=>i.done).length:0}/${t.checklist?t.checklist.length:0}`;
-            const av=t.assignee?`<div class="avatar">${t.assignee[0].toUpperCase()}</div>`:'';
+            const av=t.assignee?`<div class="avatar">${escapeHtml(String(t.assignee)[0]||'').toUpperCase()}</div>`:'';
             const attIcon = (t.attachments && t.attachments.length>0) ? '📎' : '';
-            card.innerHTML=`${img}<div class="card-tags">${tags}</div><div class="card-top"><span class="badge bg-${t.priority.toLowerCase()}">${t.priority}</span> <span>${(t.timer&&t.timer.totalSeconds>0)?'⏱️':''} ${attIcon}</span></div><div style="font-weight:600;font-size:14px;margin-bottom:5px;">${t.name}</div><div class="card-meta"><div class="meta-left">${t.checklist&&t.checklist.length>0?'☑ '+check:''} ${(t.comments&&t.comments.length>0)?'💬 '+t.comments.length:''}</div>${av}</div>`;
+            const priority = String(t.priority||'');
+            card.innerHTML=`${img}<div class="card-tags">${tags}</div><div class="card-top"><span class="badge bg-${escapeHtml(priority.toLowerCase())}">${escapeHtml(priority)}</span> <span>${(t.timer&&t.timer.totalSeconds>0)?'⏱️':''} ${attIcon}</span></div><div style="font-weight:600;font-size:14px;margin-bottom:5px;">${escapeHtml(t.name)}</div><div class="card-meta"><div class="meta-left">${t.checklist&&t.checklist.length>0?'☑ '+check:''} ${(t.comments&&t.comments.length>0)?'💬 '+t.comments.length:''}</div>${av}</div>`;
             document.getElementById(t.status).appendChild(card);
         });
         Object.keys(c).forEach(k=>document.getElementById('c-'+k).innerText=c[k]);
@@ -499,8 +528,8 @@
         ul.innerHTML = t.attachments.map((a, idx) => `
             <li class="attachment-item">
                 <span style="font-size:16px;">${a.type==='file'?'📄':'🔗'}</span>
-                <a href="${a.url}" target="_blank">${a.name}</a>
-                <button onclick="removeAttachment(${idx})" style="color:red; border:none; background:none;">×</button>
+                <a href="${escapeHtml(safeUrl(a.url))}" target="_blank" rel="noopener noreferrer">${escapeHtml(a.name)}</a>
+                <button data-action="removeAttach" data-idx="${idx}" aria-label="Remove attachment" style="color:red; border:none; background:none;">×</button>
             </li>
         `).join('');
     }
@@ -537,11 +566,11 @@
     function updateTimerUI(t){ if(!t.timer)t.timer={totalSeconds:0,isRunning:false}; const btn=document.getElementById('m-timer-btn'); btn.innerText=t.timer.isRunning?"⏸ Pause":"▶ Start"; btn.style.background=t.timer.isRunning?"#ef4444":"var(--primary)"; updateTimerDisplay(); }
     function updateTimerDisplay(){ if(!currentTaskId||!document.getElementById('taskModal').classList.contains('active'))return; const t=tasks.find(k=>k.id===currentTaskId); if(!t||!t.timer)return; let total=t.timer.totalSeconds; if(t.timer.isRunning)total+=Math.floor((Date.now()-t.timer.lastStartTime)/1000); const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60; document.getElementById('m-time-display').innerText=`${h}h ${m}m ${s}s`; }
     function cloneTask(){ const t=tasks.find(k=>k.id===currentTaskId); const n=JSON.parse(JSON.stringify(t)); n.id='t'+Date.now(); n.name+=" (Copy)"; n.status='todo'; n.timer={totalSeconds:0,isRunning:false}; n.comments=[]; tasks.push(n); saveAndRender(); alert('Cloned'); closeModal('taskModal'); }
-    function renderChecklist(t){ const ul=document.getElementById('m-checklist'); ul.innerHTML=''; let d=0; (t.checklist||[]).forEach((i,x)=>{ if(i.done)d++; ul.innerHTML+=`<li class="checklist-item ${i.done?'done':''}"><input type="checkbox" ${i.done?'checked':''} onchange="toggleCheckItem(${x})"><span style="flex:1">${i.text}</span><button onclick="remCheck(${x})" style="color:red;border:none;background:none">×</button></li>` }); document.getElementById('m-progress-bar').style.width=(t.checklist&&t.checklist.length>0?(d/t.checklist.length)*100:0)+'%'; }
+    function renderChecklist(t){ const ul=document.getElementById('m-checklist'); ul.innerHTML=''; let d=0; (t.checklist||[]).forEach((i,x)=>{ if(i.done)d++; ul.innerHTML+=`<li class="checklist-item ${i.done?'done':''}"><input type="checkbox" ${i.done?'checked':''} onchange="toggleCheckItem(${x})"><span style="flex:1">${escapeHtml(i.text)}</span><button data-action="remCheck" data-idx="${x}" aria-label="Remove item" style="color:red;border:none;background:none">×</button></li>` }); document.getElementById('m-progress-bar').style.width=(t.checklist&&t.checklist.length>0?(d/t.checklist.length)*100:0)+'%'; }
     function addCheckItem(){ const v=document.getElementById('new-check-item').value; if(v){ tasks.find(k=>k.id===currentTaskId).checklist.push({text:v,done:false}); document.getElementById('new-check-item').value=''; saveAndRender(); renderChecklist(tasks.find(k=>k.id===currentTaskId)); } }
     function toggleCheckItem(i){ const t=tasks.find(k=>k.id===currentTaskId); t.checklist[i].done=!t.checklist[i].done; saveAndRender(); renderChecklist(t); }
     function remCheck(i){ const t=tasks.find(k=>k.id===currentTaskId); t.checklist.splice(i,1); saveAndRender(); renderChecklist(t); }
-    function renderComments(t) { if(!t.comments) t.comments = []; document.getElementById('comment-list').innerHTML = t.comments.map(c => `<li class="comment-item"><div class="comment-header"><span>${c.author || 'Unknown'}</span> <span>${c.time}</span></div><div>${c.text}</div></li>`).join(''); }
+    function renderComments(t) { if(!t.comments) t.comments = []; document.getElementById('comment-list').innerHTML = t.comments.map(c => `<li class="comment-item"><div class="comment-header"><span>${escapeHtml(c.author || 'Unknown')}</span> <span>${escapeHtml(c.time)}</span></div><div>${escapeHtml(c.text)}</div></li>`).join(''); }
     function addComment() { const input = document.getElementById('new-comment'); const text = input.value.trim(); const t = tasks.find(k => k.id === currentTaskId); const author = t.assignee || 'Me'; if(text) { if(!t.comments) t.comments = []; t.comments.push({ text, author, time: new Date().toLocaleString() }); input.value = ''; saveAndRender(); renderComments(t); } }
     function updateTaskStatus(){ const t=tasks.find(k=>k.id===currentTaskId); t.status=document.getElementById('m-status').value; if(t.status==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); }
     function updateTaskMeta(){ const t=tasks.find(k=>k.id===currentTaskId); t.assignee=document.getElementById('m-assignee').value; t.priority=document.getElementById('m-priority').value; t.img=document.getElementById('m-img').value; t.desc=document.getElementById('m-desc').value; t.tags=document.getElementById('m-tags').value.split(',').filter(x=>x); saveAndRender(); }
@@ -549,14 +578,14 @@
     function openTeamModal(){ renderTeamList(); document.getElementById('teamModal').classList.add('active'); }
     function addMember(){ const v=document.getElementById('new-member-name').value.trim(); if(v&&!members.includes(v)){ members.push(v); saveMembers(); renderTeamList(); renderMembers(); document.getElementById('new-member-name').value=''; } }
     function removeMember(n){ if(confirm('Remove?')){ members=members.filter(m=>m!==n); saveMembers(); renderTeamList(); renderMembers(); } }
-    function renderTeamList(){ document.getElementById('team-list-display').innerHTML=members.map(m=>`<button style="padding:5px 10px;border:1px solid #ddd;border-radius:15px;background:#fff" onclick="removeMember('${m}')">${m} ×</button>`).join(''); }
-    function renderMembers(){ const txt=currentLang==='zh'?'(未指派)':'(Unassigned)'; const all=currentLang==='zh'?'所有成員':'All Members'; const opts=`<option value="">${txt}</option>`+members.map(m=>`<option value="${m}">${m}</option>`).join(''); document.getElementById('t-assignee').innerHTML=opts; document.getElementById('m-assignee').innerHTML=opts; document.getElementById('s-member').innerHTML=`<option value="">${all}</option>`+members.map(m=>`<option value="${m}">${m}</option>`).join(''); }
+    function renderTeamList(){ document.getElementById('team-list-display').innerHTML=members.map(m=>`<button style="padding:5px 10px;border:1px solid #ddd;border-radius:15px;background:#fff" data-action="removeMember" data-name="${escapeHtml(m)}">${escapeHtml(m)} ×</button>`).join(''); }
+    function renderMembers(){ const txt=currentLang==='zh'?'(未指派)':'(Unassigned)'; const all=currentLang==='zh'?'所有成員':'All Members'; const opts=`<option value="">${escapeHtml(txt)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); document.getElementById('t-assignee').innerHTML=opts; document.getElementById('m-assignee').innerHTML=opts; document.getElementById('s-member').innerHTML=`<option value="">${escapeHtml(all)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); }
     function allowDrop(ev){ev.preventDefault();}
     function drop(ev){ ev.preventDefault(); const id=ev.dataTransfer.getData("text"); const t=ev.target.closest('.task-list'); if(t){ const task=tasks.find(k=>k.id===id); if(task.status!==t.id){ task.status=t.id; if(t.id==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); } } }
     function openDashboard(){ document.getElementById('dashboardModal').classList.add('active'); renderCharts(); }
     function renderCharts(){ if(window.C1)window.C1.destroy(); if(window.C2)window.C2.destroy(); const sData=['todo','inprogress','onhold','blocked','done'].map(s=>tasks.filter(t=>t.status===s).length); const mCount={}; members.forEach(m=>mCount[m]=0); mCount['Unassigned']=0; tasks.forEach(t=>{mCount[t.assignee||'Unassigned']++}); window.C1=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:['Todo','In Prog','Hold','Blocked','Done'],datasets:[{data:sData,backgroundColor:['#cbd5e1','#3b82f6','#f59e0b','#ef4444','#10b981']}]}}); window.C2=new Chart(document.getElementById('memberChart'),{type:'bar',data:{labels:Object.keys(mCount),datasets:[{label:'Tasks',data:Object.values(mCount),backgroundColor:'#4f46e5'}]}}); }
     function logActivity(msg){ activities.unshift({msg,time:new Date().toLocaleString()}); if(activities.length>50)activities.pop(); localStorage.setItem('v13_activities',JSON.stringify(activities)); }
-    function openLogModal(){ document.getElementById('log-list').innerHTML=activities.map(a=>`<li class="log-item"><span>${a.msg}</span> <span style="font-size:10px;color:#999">${a.time}</span></li>`).join(''); document.getElementById('logModal').classList.add('active'); }
+    function openLogModal(){ document.getElementById('log-list').innerHTML=activities.map(a=>`<li class="log-item"><span>${escapeHtml(a.msg)}</span> <span style="font-size:10px;color:#999">${escapeHtml(a.time)}</span></li>`).join(''); document.getElementById('logModal').classList.add('active'); }
     function clearLog(){ activities=[]; localStorage.setItem('v13_activities','[]'); openLogModal(); }
     function saveAndRender(){ localStorage.setItem('v13_tasks',JSON.stringify(tasks)); renderKanban(); }
     function saveMembers(){ localStorage.setItem('v13_members',JSON.stringify(members)); }
