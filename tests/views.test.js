@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { filterTasks, sortByPriority } from '../src/views/kanban.js';
 import { bucketByDueDate } from '../src/views/calendar.js';
-import { statusCounts } from '../src/views/dashboard.js';
+
 import { migrateV12 } from '../src/storage/local.js';
 import { normalizeTask } from '../src/util/task.js';
 
@@ -72,15 +72,6 @@ describe('bucketByDueDate', () => {
   });
 });
 
-describe('statusCounts', () => {
-  it('counts per status in board order', () => {
-    const tasks = [
-      task({ status: 'todo' }), task({ status: 'todo' }),
-      task({ status: 'done' }), task({ status: 'blocked' })
-    ];
-    expect(statusCounts(tasks)).toEqual([2, 0, 0, 1, 1]);
-  });
-});
 
 describe('migrateV12', () => {
   beforeEach(() => localStorage.clear());

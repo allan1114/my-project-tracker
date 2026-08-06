@@ -16,6 +16,7 @@
     <div class="nav-actions">
         <button class="nav-btn active" id="btn-view-kanban" data-action="viewKanban"><span data-i18n="view_kanban">📋 看板</span></button>
         <button class="nav-btn" id="btn-view-calendar" data-action="viewCalendar"><span data-i18n="view_cal">📅 日曆</span></button>
+        <button class="nav-btn" id="btn-view-dashboard" data-action="viewDashboard"><span data-i18n="view_dash">📈 儀表板</span></button>
 
         <div class="nav-divider"></div>
 
@@ -25,7 +26,6 @@
         <div class="nav-divider"></div>
 
         <button class="nav-btn" data-action="toggleLang" aria-label="Toggle language">🌐 <span id="lang-btn-text">中/EN</span></button>
-        <button class="nav-btn" data-action="openDashboard" aria-label="Open dashboard"><span data-i18n="nav_dash">📊</span></button>
         <button class="nav-btn" data-action="openLog" aria-label="Open activity log"><span data-i18n="nav_log">📜</span></button>
         <button class="nav-btn" data-action="openTeam" aria-label="Open team settings"><span data-i18n="nav_team">👥</span></button>
         <button class="nav-btn" data-action="toggleTheme" aria-label="Toggle theme">🌙</button>
@@ -121,6 +121,37 @@
         </div>
         <div id="calendar-body" class="calendar-grid" style="margin-top:5px;"></div>
     </div>
+
+    <div id="dashboard-view">
+        <div class="dash-head">
+            <h2 data-i18n="nav_dash">📈 儀表板</h2>
+            <span class="dash-stamp">Updated <span id="dash-updated"></span></span>
+        </div>
+
+        <div class="kpi-grid" id="kpi-grid"></div>
+
+        <div class="chart-row">
+            <div class="chart-col">
+                <h3 data-i18n="chart_status">任務狀態分佈</h3>
+                <div class="chart-container"><canvas id="statusChart" aria-label="Task status distribution; the same figures are listed in the table below"></canvas></div>
+                <div id="status-table"></div>
+            </div>
+            <div class="chart-col">
+                <h3 data-i18n="chart_workload">負責人工作量</h3>
+                <div class="chart-container tall"><canvas id="workloadChart" aria-label="Tasks per assignee, stacked by status"></canvas></div>
+            </div>
+        </div>
+
+        <div class="dash-section">
+            <h3 data-i18n="chart_trend">30 天完成趨勢</h3>
+            <div class="chart-container short"><canvas id="trendChart" aria-label="Tasks completed per day over the last 30 days"></canvas></div>
+        </div>
+
+        <div class="dash-section">
+            <h3 data-i18n="tbl_overdue">逾期任務</h3>
+            <div id="overdue-table"></div>
+        </div>
+    </div>
 </div>
 
 <div id="taskModal" class="modal">
@@ -196,17 +227,6 @@
         </div>
 
         <div class="text-right"><button class="btn-link-danger" data-action="deleteTask" data-i18n="btn_delete">刪除任務</button></div>
-    </div>
-</div>
-
-<div id="dashboardModal" class="modal">
-    <div class="modal-content">
-        <button class="close-btn" data-action="closeModal" data-target="dashboardModal" aria-label="Close">×</button>
-        <h2 data-i18n="nav_dash">📈 儀表板</h2>
-        <div class="chart-row">
-            <div class="chart-col"><h4 data-i18n="chart_status">任務狀態</h4><div class="chart-container"><canvas id="statusChart"></canvas></div></div>
-            <div class="chart-col"><h4 data-i18n="chart_workload">工作量</h4><div class="chart-container"><canvas id="memberChart"></canvas></div></div>
-        </div>
     </div>
 </div>
 

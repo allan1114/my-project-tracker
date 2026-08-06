@@ -32,7 +32,7 @@ import {
 } from './views/task-modal.js';
 import { openTeamModal, addMember, removeMember, renderMemberSelects } from './views/team.js';
 import { openLogModal, clearLog } from './views/log.js';
-import { openDashboard, destroyCharts, renderCharts } from './views/dashboard.js';
+import { renderDashboard, destroyCharts } from './views/dashboard.js';
 import { initAuth, signIn, signOut, currentUserName } from './auth/index.js';
 
 let currentView = 'kanban';
@@ -58,20 +58,26 @@ function toggleTheme() {
   } catch {
     /* storage blocked */
   }
-  // Chart colours are read from CSS variables at construction time.
-  if (currentView === 'dashboard' || $('dashboardModal')?.classList.contains('active')) renderCharts();
+  // Chart colours are read from CSS variables when the chart is constructed,
+  // so a theme change needs a rebuild rather than a repaint.
+  if (currentView === 'dashboard') renderDashboard();
 }
 
 /* ---------- views ---------- */
 
+const VIEWS = { kanban: 'kanban-wrapper', calendar: 'calendar-view', dashboard: 'dashboard-view' };
+
 function switchView(view) {
   currentView = view;
-  $('kanban-wrapper').style.display = view === 'kanban' ? 'block' : 'none';
-  $('calendar-view').style.display = view === 'calendar' ? 'block' : 'none';
-  $('btn-view-kanban').classList.toggle('active', view === 'kanban');
-  $('btn-view-calendar').classList.toggle('active', view === 'calendar');
-  if (view === 'calendar') renderCalendar();
+  Object.entries(VIEWS).forEach(([name, id]) => {
+    $(id).style.display = name === view ? 'block' : 'none';
+    $('btn-view-' + name).classList.toggle('active', name === view);
+  });
+  // Charts hold canvases and animation frames; drop them when leaving.
+  if (view !== 'dashboard') destroyCharts();
   if (view === 'kanban') renderKanban();
+  else if (view === 'calendar') renderCalendar();
+  else if (view === 'dashboard') renderDashboard();
 }
 
 function closeModal(id) {
@@ -79,7 +85,6 @@ function closeModal(id) {
   if (!el) return;
   el.classList.remove('active');
   if (id === 'taskModal') onTaskModalClosed();
-  if (id === 'dashboardModal') destroyCharts();
   releaseFocusTrap();
 }
 
@@ -138,15 +143,17 @@ function addTag(inputId, tag, isMeta) {
 const clickActions = {
   viewKanban: () => switchView('kanban'),
   viewCalendar: () => switchView('calendar'),
+  viewDashboard: () => switchView('dashboard'),
   sort: toggleSort,
   focusMode: toggleFocusMode,
   toggleLang: () => {
     toggleLang();
     applyLanguage();
     renderMemberSelects();
+    // Re-render the active view: its labels come from the string table.
     if (currentView === 'calendar') renderCalendar();
+    else if (currentView === 'dashboard') renderDashboard();
   },
-  openDashboard,
   openLog: openLogModal,
   openTeam: openTeamModal,
   toggleTheme,
@@ -189,6 +196,8 @@ function installEventHandlers() {
   document.addEventListener('click', (e) => {
     const el = e.target.closest('[data-action]');
     if (el) {
+      // Dashboard tables link tasks with <a href="#">; don't let the hash navigate.
+      if (el.tagName === 'A') e.preventDefault();
       const fn = clickActions[el.dataset.action];
       if (fn) fn(el, e);
     }
@@ -258,6 +267,7 @@ async function boot() {
   subscribe(() => {
     if (currentView === 'kanban') renderKanban();
     else if (currentView === 'calendar') renderCalendar();
+    else if (currentView === 'dashboard') renderDashboard();
   });
 
   renderMemberSelects();
