@@ -34,7 +34,19 @@ Monthly grid of due dates with month-to-month navigation.
 - **Comments**, **task duplication**, and link **attachments**.
 
 ### 4. 數據可視化 (Dashboard) 📈
-Status distribution and per-assignee workload, rendered with Chart.js in theme-aware colours.
+A full view, not a popup: six KPI tiles (total, in progress, blocked, overdue, done this week,
+time tracked), a status doughnut, per-assignee workload as a stacked bar, a 30-day completion
+trend, and an overdue table sorted worst-first where every row links to its task.
+
+The five status colours were **measured, not picked** — run through a categorical-palette
+validator (lightness band, chroma floor, colour-vision-deficiency separation, normal-vision
+separation, contrast) against the real light and dark chart surfaces. Two things came out of it:
+the old slate `#94a3b8` read as gray and failed the chroma floor, and amber-on-hold beside
+red-blocked cannot be separated for deuteranopes anywhere in the dark lightness band. Since
+separation is measured on *adjacent* pairs, the charts draw in the order
+`blocked → todo → onhold → inprogress → done` — deliberately not the board's column order — which
+passes every check in both themes. Gold still sits at 2.38:1 on white, so every chart ships a
+legend and the status breakdown is also rendered as a table: identity is never colour alone.
 
 ---
 
@@ -176,6 +188,15 @@ new child table cannot accidentally be given a weaker rule.
 | :---: | :--- |
 | <kbd>N</kbd> | Create new task (ignored while a modal is open) |
 | <kbd>Esc</kbd> | Close the current modal |
+
+---
+
+## 🧪 開發 (Contributing)
+
+`npm test` covers the pure logic — the task normalizer, timer arithmetic, filters, backup
+parsing, the v12 migration and every dashboard aggregation. `npm run lint` and `npm run build`
+round out what CI checks on each PR. If you touch the chart palette, re-run it through a
+categorical-palette validator against both surfaces rather than eyeballing the result.
 
 ---
 
