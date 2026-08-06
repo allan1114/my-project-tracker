@@ -2,7 +2,7 @@
 <html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Project Master (Pro)</title>
     
@@ -20,6 +20,11 @@
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
             --modal-overlay: rgba(0, 0, 0, 0.5);
             --p-high: #ef4444; --p-medium: #f59e0b; --p-low: #10b981;
+            /* Accent surfaces (tags, avatars, chips) — themed so they don't go light-on-light */
+            --accent-bg: #e0e7ff; --accent-text: #4f46e5;
+            --badge-high-bg: #fee2e2; --badge-high-text: #b91c1c;
+            --badge-medium-bg: #fef3c7; --badge-medium-text: #92400e;
+            --badge-low-bg: #d1fae5; --badge-low-text: #065f46;
         }
         [data-theme="dark"] {
             --primary: #6366f1; --primary-hover: #818cf8;
@@ -27,6 +32,10 @@
             --text-main: #f1f5f9; --text-sub: #94a3b8; --border: #334155; --input-bg: #1e293b;
             --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
             --modal-overlay: rgba(0, 0, 0, 0.8);
+            --accent-bg: #312e81; --accent-text: #c7d2fe;
+            --badge-high-bg: #7f1d1d; --badge-high-text: #fecaca;
+            --badge-medium-bg: #78350f; --badge-medium-text: #fde68a;
+            --badge-low-bg: #064e3b; --badge-low-text: #a7f3d0;
         }
         body { font-family: 'Inter', sans-serif; background-color: var(--bg-body); color: var(--text-main); margin: 0; transition: 0.3s; }
         button { cursor: pointer; font-family: inherit; transition: 0.2s; }
@@ -96,9 +105,18 @@
         .card-img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-bottom: 8px; display: none; }
         .card-img.show { display: block; }
         .card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
-        .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: #e0e7ff; color: var(--primary); font-weight: 600; }
+        .tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--accent-bg); color: var(--accent-text); font-weight: 600; }
         .card-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 12px; color: var(--text-sub); }
-        .avatar { width: 24px; height: 24px; border-radius: 50%; background: #e0e7ff; color: #4f46e5; display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; }
+        .avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--accent-bg); color: var(--accent-text); display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold; }
+
+        /* Priority badge row on the card (classes were referenced but never defined) */
+        .card-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; }
+        .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; letter-spacing: 0.02em; white-space: nowrap; }
+        .badge.bg-high { background: var(--badge-high-bg); color: var(--badge-high-text); }
+        .badge.bg-medium { background: var(--badge-medium-bg); color: var(--badge-medium-text); }
+        .badge.bg-low { background: var(--badge-low-bg); color: var(--badge-low-text); }
+        .member-chip { padding: 5px 10px; border: 1px solid var(--border); border-radius: 15px; background: var(--bg-card); color: var(--text-main); }
+        .member-chip:hover { border-color: var(--p-high); color: var(--p-high); }
 
         /* --- Modal --- */
         .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--modal-overlay); backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; pointer-events: none; transition: 0.2s; }
@@ -139,8 +157,8 @@
         
         <div style="width: 1px; height: 20px; background: var(--border); margin: 0 5px;"></div>
 
-        <button class="nav-btn" onclick="sortTasks()"><span data-i18n="btn_sort">🚨 排序</span></button>
-        <button class="nav-btn" onclick="toggleFocusMode()" id="btn-focus"><span data-i18n="btn_focus">👀 專注</span></button>
+        <button class="nav-btn" id="btn-sort" onclick="sortTasks()" aria-pressed="false"><span data-i18n="btn_sort">🚨 排序</span></button>
+        <button class="nav-btn" onclick="toggleFocusMode()" id="btn-focus" aria-pressed="false"><span data-i18n="btn_focus">👀 專注</span></button>
         
         <div style="width: 1px; height: 20px; background: var(--border); margin: 0 5px;"></div>
 
@@ -332,12 +350,14 @@
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
     }
+    // Absolute URLs only. Resolving against window.location would turn a typo'd
+    // attachment ("drive.google.com/...") into a link back into the app itself.
     function safeUrl(url) {
         if (!url) return '#';
         try {
-            const u = new URL(url, window.location.href);
+            const u = new URL(String(url));
             if (['http:', 'https:', 'mailto:'].includes(u.protocol)) return u.href;
-        } catch (e) { /* fall through */ }
+        } catch (e) { /* not an absolute URL */ }
         return '#';
     }
     function safeStorageGet(key, fallback) {
@@ -368,11 +388,59 @@
         const dt = d ? new Date(d) : new Date();
         return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
     }
+    function localeTag() { return currentLang === 'zh' ? 'zh-HK' : 'en-US'; }
     function debounce(fn, ms) { let h; return function (...args) { clearTimeout(h); h = setTimeout(() => fn.apply(this, args), ms); }; }
     function clampStr(s, max) { return String(s || '').slice(0, max); }
     function priorityEmoji(p) { return p === 'High' ? '🔴' : p === 'Low' ? '🟢' : '🟡'; }
     const MAX_NAME_LEN = 200;
     const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+    const STATUSES = ['todo', 'inprogress', 'onhold', 'blocked', 'done'];
+    const PRIORITIES = ['High', 'Medium', 'Low'];
+
+    // Date.now() collides when two tasks are created in the same millisecond (clone does this).
+    function newId() {
+        if (window.crypto && typeof crypto.randomUUID === 'function') return 't' + crypto.randomUUID();
+        return 't' + Date.now() + '-' + Math.random().toString(36).slice(2, 10);
+    }
+
+    // Coerce anything (imported JSON, legacy v12 rows) into a task the renderer can survive.
+    function normalizeTask(raw) {
+        if (!raw || typeof raw !== 'object') return null;
+        const t = {
+            id: typeof raw.id === 'string' && raw.id ? raw.id : newId(),
+            name: clampStr(raw.name, MAX_NAME_LEN) || '(untitled)',
+            status: STATUSES.includes(raw.status) ? raw.status : 'todo',
+            priority: PRIORITIES.includes(raw.priority) ? raw.priority : 'Medium',
+            assignee: typeof raw.assignee === 'string' ? clampStr(raw.assignee, MAX_NAME_LEN) : '',
+            end: typeof raw.end === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(raw.end) ? raw.end : '',
+            img: typeof raw.img === 'string' ? raw.img : '',
+            desc: typeof raw.desc === 'string' ? raw.desc : '',
+            tags: Array.isArray(raw.tags) ? raw.tags.filter(x => typeof x === 'string' && x).map(x => clampStr(x, 50)) : [],
+            checklist: Array.isArray(raw.checklist)
+                ? raw.checklist.filter(i => i && typeof i === 'object').map(i => ({ text: clampStr(i.text, MAX_NAME_LEN), done: !!i.done }))
+                : [],
+            comments: Array.isArray(raw.comments)
+                ? raw.comments.filter(c => c && typeof c === 'object').map(c => ({
+                    text: clampStr(c.text, 2000), author: clampStr(c.author, MAX_NAME_LEN) || 'Unknown', time: clampStr(c.time, 64)
+                }))
+                : [],
+            attachments: Array.isArray(raw.attachments)
+                ? raw.attachments.filter(a => a && typeof a === 'object').map(a => ({
+                    name: clampStr(a.name, MAX_NAME_LEN), url: clampStr(a.url, 2000), type: a.type === 'file' ? 'file' : 'link'
+                }))
+                : [],
+            timer: { totalSeconds: 0, isRunning: false }
+        };
+        const rt = raw.timer;
+        if (rt && typeof rt === 'object' && Number.isFinite(Number(rt.totalSeconds))) {
+            t.timer.totalSeconds = Math.max(0, Math.floor(Number(rt.totalSeconds)));
+            if (rt.isRunning && Number.isFinite(Number(rt.lastStartTime))) {
+                t.timer.isRunning = true;
+                t.timer.lastStartTime = Number(rt.lastStartTime);
+            }
+        }
+        return t;
+    }
 
     // ---------- Focus trap for modals ----------
     let _trapState = null;
@@ -414,9 +482,12 @@
         else if (a === 'removeAttach') removeAttachment(Number(el.dataset.idx));
     });
 
-    let tasks      = safeStorageGet('v13_tasks', []);
-    let members    = safeStorageGet('v13_members', ['Me']);
-    let activities = safeStorageGet('v13_activities', []);
+    const rawTasks = safeStorageGet('v13_tasks', []);
+    let tasks      = (Array.isArray(rawTasks) ? rawTasks : []).map(normalizeTask).filter(Boolean);
+    const rawMembers = safeStorageGet('v13_members', ['Me']);
+    let members    = (Array.isArray(rawMembers) ? rawMembers : ['Me']).filter(m => typeof m === 'string' && m);
+    const rawActs  = safeStorageGet('v13_activities', []);
+    let activities = (Array.isArray(rawActs) ? rawActs : []).filter(a => a && typeof a === 'object');
 
     // Migration v12 -> v13: merge any v12 items not already present (by id), then drop v12 keys.
     (function migrateV12() {
@@ -425,7 +496,11 @@
         let touched = false;
         if (Array.isArray(v12tasks)) {
             const existing = new Set(tasks.map(t => t && t.id));
-            v12tasks.forEach(t => { if (t && t.id && !existing.has(t.id)) { tasks.push(t); touched = true; } });
+            v12tasks.forEach(t => {
+                if (!t || !t.id || existing.has(t.id)) return;
+                const n = normalizeTask(t);
+                if (n) { tasks.push(n); touched = true; }
+            });
             try { localStorage.removeItem('v12_tasks'); } catch (e) {}
         }
         if (Array.isArray(v12members)) {
@@ -448,14 +523,67 @@
     function startTimerLoop() { if (!timerHandle) timerHandle = setInterval(updateTimerDisplay, 1000); }
     function stopTimerLoop() { if (timerHandle) { clearInterval(timerHandle); timerHandle = null; } }
 
+    // ---------- Work-timer lifecycle ----------
+    // A running timer persists an absolute lastStartTime, so without reconciliation every hour
+    // the app spends closed gets credited to the task. We write a heartbeat while any timer is
+    // running; on boot we credit elapsed time only up to that heartbeat, never up to now.
+    const HEARTBEAT_KEY = 'v13_last_seen';
+    const HEARTBEAT_MS = 5000;
+    let heartbeatHandle = null;
+
+    function finalizeTimer(t, at) {
+        if (!t || !t.timer || !t.timer.isRunning) return false;
+        const start = Number(t.timer.lastStartTime);
+        const elapsed = Number.isFinite(start) ? Math.max(0, Math.floor((at - start) / 1000)) : 0;
+        t.timer.totalSeconds = Math.max(0, (Number(t.timer.totalSeconds) || 0) + elapsed);
+        t.timer.isRunning = false;
+        delete t.timer.lastStartTime;
+        return true;
+    }
+    function anyTimerRunning() { return tasks.some(t => t.timer && t.timer.isRunning); }
+    function startHeartbeat() {
+        if (heartbeatHandle) return;
+        safeStorageSet(HEARTBEAT_KEY, Date.now());
+        heartbeatHandle = setInterval(() => {
+            if (!anyTimerRunning()) { stopHeartbeat(); return; }
+            try { localStorage.setItem(HEARTBEAT_KEY, JSON.stringify(Date.now())); } catch (e) {}
+        }, HEARTBEAT_MS);
+    }
+    function stopHeartbeat() { if (heartbeatHandle) { clearInterval(heartbeatHandle); heartbeatHandle = null; } }
+
+    (function reconcileTimersOnBoot() {
+        const seen = Number(safeStorageGet(HEARTBEAT_KEY, 0));
+        const cutoff = Number.isFinite(seen) && seen > 0 ? seen : Date.now();
+        let touched = false;
+        tasks.forEach(t => { if (finalizeTimer(t, cutoff)) touched = true; });
+        if (touched) safeStorageSet('v13_tasks', tasks);
+    })();
+
+    // Clean shutdown: bank any running time rather than leaving a dangling lastStartTime.
+    // Raw localStorage here — safeStorageSet's alert() is useless during unload.
+    window.addEventListener('beforeunload', () => {
+        const now = Date.now();
+        let touched = false;
+        tasks.forEach(t => { if (finalizeTimer(t, now)) touched = true; });
+        if (touched) { try { localStorage.setItem('v13_tasks', JSON.stringify(tasks)); } catch (e) {} }
+    });
+
     applyLanguage(); renderMembers(); renderKanban();
     const debouncedRender = debounce(renderKanban, 300);
     function onFilterInput() { debouncedRender(); }
 
     // Shortcuts
     document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape') document.querySelectorAll('.modal.active').forEach(m => closeModal(m.id));
-        if (e.key.toLowerCase() === 'n' && !e.target.matches('input,textarea')) document.getElementById('t-name').focus();
+        if (!e.key) return;
+        if (e.key === 'Escape') { document.querySelectorAll('.modal.active').forEach(m => closeModal(m.id)); return; }
+        // 'N' used to fire with a modal open, focusing the field behind the overlay and
+        // fighting the focus trap.
+        if (document.querySelector('.modal.active')) return;
+        if (e.key.toLowerCase() === 'n' && !e.target.matches('input,textarea,select')) {
+            e.preventDefault();
+            switchView('kanban');
+            document.getElementById('t-name').focus();
+        }
     });
 
     // View Switcher
@@ -470,55 +598,55 @@
     // Auto Sort (Priority)
     function sortTasks() {
         isSorted = !isSorted;
-        const btn = document.querySelector('button[onclick="sortTasks()"]');
-        btn.style.background = isSorted ? 'var(--primary)' : 'transparent';
-        btn.style.color = isSorted ? 'white' : 'var(--text-main)';
+        // Was querySelector('button[onclick="sortTasks()"]') — broke on any attribute edit.
+        const btn = document.getElementById('btn-sort');
+        btn.classList.toggle('active', isSorted);
+        btn.setAttribute('aria-pressed', String(isSorted));
         renderKanban();
     }
 
     // Focus Mode
     function toggleFocusMode() {
         isFocus = !isFocus;
-        const board = document.getElementById('main-board');
+        document.getElementById('main-board').classList.toggle('focus-mode', isFocus);
         const btn = document.getElementById('btn-focus');
-        if(isFocus) {
-            board.classList.add('focus-mode');
-            btn.style.background = 'var(--primary)'; btn.style.color = 'white';
-        } else {
-            board.classList.remove('focus-mode');
-            btn.style.background = 'transparent'; btn.style.color = 'var(--text-main)';
-        }
+        btn.classList.toggle('active', isFocus);
+        btn.setAttribute('aria-pressed', String(isFocus));
     }
 
     // Calendar Logic
     function renderCalendar() {
         const body = document.getElementById('calendar-body');
-        body.innerHTML = '';
         const year = calDate.getFullYear();
         const month = calDate.getMonth();
-        document.getElementById('cal-title').innerText = new Date(year, month).toLocaleString(currentLang, { month:'long', year:'numeric' });
+        document.getElementById('cal-title').innerText = new Date(year, month).toLocaleString(localeTag(), { month:'long', year:'numeric' });
 
         const firstDay = new Date(year, month, 1).getDay();
         const daysInMonth = new Date(year, month + 1, 0).getDate();
         const todayStr = localDateStr();
 
-        // Empty cells
-        for(let i=0; i<firstDay; i++) body.innerHTML += `<div class="calendar-day" style="background:transparent;border:none;"></div>`;
+        // Bucket once (O(n)) instead of scanning every task for every day of the month.
+        const byDate = new Map();
+        tasks.forEach(t => {
+            if (!t.end) return;
+            if (!byDate.has(t.end)) byDate.set(t.end, []);
+            byDate.get(t.end).push(t);
+        });
 
-        // Days
-        for(let d=1; d<=daysInMonth; d++) {
+        // Accumulate into an array and write innerHTML once; `innerHTML +=` in a loop
+        // reparses the whole month on every iteration.
+        const out = [];
+        for (let i = 0; i < firstDay; i++) out.push('<div class="calendar-day" style="background:transparent;border:none;"></div>');
+
+        for (let d = 1; d <= daysInMonth; d++) {
             const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-            const isToday = dateStr === todayStr;
-            let html = `<div class="calendar-day ${isToday?'today':''}">
-                <span class="day-num">${d}</span>`;
-            
-            // Find tasks for this day
-            tasks.filter(t => t.end === dateStr).forEach(t => {
-                html += `<div class="cal-task ${t.status==='done'?'done':''}" data-action="openTask" data-id="${escapeHtml(t.id)}">${escapeHtml(t.name)}</div>`;
+            out.push(`<div class="calendar-day ${dateStr === todayStr ? 'today' : ''}"><span class="day-num">${d}</span>`);
+            (byDate.get(dateStr) || []).forEach(t => {
+                out.push(`<div class="cal-task ${t.status==='done'?'done':''}" data-action="openTask" data-id="${escapeHtml(t.id)}" title="${escapeHtml(t.name)}">${escapeHtml(t.name)}</div>`);
             });
-            html += `</div>`;
-            body.innerHTML += html;
+            out.push('</div>');
         }
+        body.innerHTML = out.join('');
     }
     function changeMonth(delta) {
         calDate.setMonth(calDate.getMonth() + delta);
@@ -544,6 +672,8 @@
 
     function toggleLanguage() { currentLang = currentLang === 'zh' ? 'en' : 'zh'; localStorage.setItem('lang', currentLang); applyLanguage(); }
     function applyLanguage() {
+        // Keep <html lang> in sync so screen readers use the right pronunciation.
+        document.documentElement.lang = localeTag();
         document.getElementById('lang-btn-text').innerText = currentLang === 'zh' ? '中/EN' : 'EN/中';
         document.querySelectorAll('[data-i18n]').forEach(el => { const k=el.getAttribute('data-i18n'); if(i18n[currentLang][k]) el.innerText=i18n[currentLang][k]; });
         document.querySelectorAll('[data-ph]').forEach(el => { const k=el.getAttribute('data-ph'); if(i18n[currentLang][k]) el.placeholder=i18n[currentLang][k]; });
@@ -554,14 +684,28 @@
         const name = clampStr(document.getElementById('t-name').value.trim(), MAX_NAME_LEN);
         if (!name) return alert(currentLang==='zh'?"請輸入名稱":"Name required");
         const tags = document.getElementById('t-tags').value.split(',').map(t=>t.trim()).filter(t=>t);
-        tasks.push({ id:'t'+Date.now(), name, priority:document.getElementById('t-priority').value, assignee:document.getElementById('t-assignee').value||'', end:document.getElementById('t-end').value, tags, img:document.getElementById('t-img').value, status:'todo', checklist:[], timer:{totalSeconds:0,isRunning:false}, desc:'', comments:[], attachments:[] });
-        logActivity(`New Task: "${name}"`); saveAndRender();
-        document.getElementById('t-name').value = ''; document.getElementById('t-tags').value = '';
+        tasks.push(normalizeTask({
+            id: newId(), name,
+            priority: document.getElementById('t-priority').value,
+            assignee: document.getElementById('t-assignee').value || '',
+            end: document.getElementById('t-end').value,
+            tags, img: document.getElementById('t-img').value, status: 'todo'
+        }));
+        logActivity(`➕ New task: "${name}"`); saveAndRender();
+        // Reset every input, not just two — a leftover image URL or due date silently
+        // attached itself to the next task created.
+        document.getElementById('t-name').value = '';
+        document.getElementById('t-tags').value = '';
+        document.getElementById('t-img').value = '';
+        document.getElementById('t-priority').value = 'Medium';
+        document.getElementById('t-assignee').value = '';
+        document.getElementById('t-end').valueAsDate = new Date();
+        document.getElementById('t-name').focus();
     }
 
     function renderKanban() {
         const sT=document.getElementById('s-text').value.toLowerCase(), sM=document.getElementById('s-member').value, sTg=document.getElementById('s-tag').value.toLowerCase();
-        ['todo','inprogress','onhold','blocked','done'].forEach(id => document.getElementById(id).innerHTML = '');
+        STATUSES.forEach(id => document.getElementById(id).innerHTML = '');
         let c={todo:0,inprogress:0,onhold:0,blocked:0,done:0};
 
         // Filter
@@ -579,21 +723,29 @@
         }
 
         const today = localDateStr();
+        // One fragment per column, appended once — avoids a reflow per card.
+        const frags = {}; STATUSES.forEach(s => frags[s] = document.createDocumentFragment());
+
         filteredTasks.forEach(t => {
-            c[t.status]++;
-            const overdue = (t.status!=='done' && t.end && t.end < today) ? 'overdue' : '';
+            // Never index the DOM with unvalidated data: an unrecognized status used to yield
+            // getElementById(null) and blank the entire board.
+            const status = STATUSES.includes(t.status) ? t.status : 'todo';
+            c[status]++;
+            const overdue = (status!=='done' && t.end && t.end < today) ? 'overdue' : '';
             const card=document.createElement('div'); card.className='task-card '+overdue;
             card.draggable=true; card.id=t.id; card.onclick=()=>openTaskModal(t.id); card.ondragstart=(ev)=>ev.dataTransfer.setData("text",ev.target.id);
-            const img=t.img?`<img src="${escapeHtml(safeUrl(t.img))}" class="card-img show" onerror="this.style.display='none'">`:'';
+            const imgUrl = t.img ? safeUrl(t.img) : '#';
+            const img = (t.img && imgUrl !== '#') ? `<img src="${escapeHtml(imgUrl)}" alt="" class="card-img show" onerror="this.style.display='none'">` : '';
             const tags=t.tags?t.tags.map(tag=>`<span class="tag">${escapeHtml(tag)}</span>`).join(''):'';
             const check=`${t.checklist?t.checklist.filter(i=>i.done).length:0}/${t.checklist?t.checklist.length:0}`;
-            const av=t.assignee?`<div class="avatar">${escapeHtml(String(t.assignee)[0]||'').toUpperCase()}</div>`:'';
+            const av=t.assignee?`<div class="avatar" title="${escapeHtml(t.assignee)}">${escapeHtml(String(t.assignee)[0]||'').toUpperCase()}</div>`:'';
             const attIcon = (t.attachments && t.attachments.length>0) ? '📎' : '';
-            const priority = String(t.priority||'');
+            const priority = PRIORITIES.includes(t.priority) ? t.priority : 'Medium';
             const pEm = priorityEmoji(priority);
-            card.innerHTML=`${img}<div class="card-tags">${tags}</div><div class="card-top"><span class="badge bg-${escapeHtml(priority.toLowerCase())}">${pEm} ${escapeHtml(priority)}</span> <span>${(t.timer&&t.timer.totalSeconds>0)?'⏱️':''} ${attIcon}</span></div><div style="font-weight:600;font-size:14px;margin-bottom:5px;">${escapeHtml(t.name)}</div><div class="card-meta"><div class="meta-left">${t.checklist&&t.checklist.length>0?'☑ '+check:''} ${(t.comments&&t.comments.length>0)?'💬 '+t.comments.length:''}</div>${av}</div>`;
-            document.getElementById(t.status).appendChild(card);
+            card.innerHTML=`${img}<div class="card-tags">${tags}</div><div class="card-top"><span class="badge bg-${priority.toLowerCase()}">${pEm} ${escapeHtml(priority)}</span> <span>${elapsedSeconds(t)>0?'⏱️':''} ${attIcon}</span></div><div style="font-weight:600;font-size:14px;margin-bottom:5px;">${escapeHtml(t.name)}</div><div class="card-meta"><div class="meta-left">${t.checklist&&t.checklist.length>0?'☑ '+check:''} ${(t.comments&&t.comments.length>0)?'💬 '+t.comments.length:''}</div>${av}</div>`;
+            frags[status].appendChild(card);
         });
+        STATUSES.forEach(s => document.getElementById(s).appendChild(frags[s]));
         Object.keys(c).forEach(k=>document.getElementById('c-'+k).innerText=c[k]);
     }
 
@@ -602,9 +754,8 @@
         // Finalize a running timer on a previously-open task before switching.
         if (currentTaskId && currentTaskId !== id) {
             const prev = tasks.find(k => k.id === currentTaskId);
-            if (prev && prev.timer && prev.timer.isRunning) {
-                prev.timer.totalSeconds += Math.floor((Date.now() - prev.timer.lastStartTime) / 1000);
-                prev.timer.isRunning = false;
+            if (finalizeTimer(prev, Date.now())) {
+                if (!anyTimerRunning()) stopHeartbeat();
                 safeStorageSet('v13_tasks', tasks);
             }
         }
@@ -612,6 +763,7 @@
         const t = tasks.find(k => k.id === id);
         if (!t) { currentTaskId = null; return; }
         document.getElementById('m-title').innerText=t.name; document.getElementById('m-status').value=t.status;
+        ensureAssigneeOption(document.getElementById('m-assignee'), t.assignee);
         document.getElementById('m-assignee').value=t.assignee; document.getElementById('m-priority').value=t.priority;
         document.getElementById('m-tags').value=t.tags?t.tags.join(', '):''; document.getElementById('m-img').value=t.img||'';
         document.getElementById('m-desc').value=t.desc||'';
@@ -652,13 +804,20 @@
     function addAttachmentLink() {
         const input = document.getElementById('attach-link');
         const url = input.value.trim();
-        if(url) {
-            const t = getCurrentTask(); if (!t) return;
-            if(!t.attachments) t.attachments = [];
-            t.attachments.push({ name: url, url: url, type: 'link' });
-            input.value = '';
-            saveAndRender(); renderAttachments(t);
+        if(!url) return;
+        // safeUrl() now demands an absolute http(s)/mailto URL, so reject here rather than
+        // storing a link that silently renders as inert "#".
+        if (safeUrl(url) === '#') {
+            alert(currentLang==='zh'
+                ? '請輸入完整網址（需以 https:// 開頭）'
+                : 'Enter a full URL (must start with https://)');
+            return;
         }
+        const t = getCurrentTask(); if (!t) return;
+        if(!t.attachments) t.attachments = [];
+        t.attachments.push({ name: clampStr(url, MAX_NAME_LEN), url: clampStr(url, 2000), type: 'link' });
+        input.value = '';
+        saveAndRender(); renderAttachments(t);
     }
     function removeAttachment(idx) {
         const t = getCurrentTask(); if (!t || !t.attachments) return;
@@ -667,29 +826,130 @@
     }
 
     // Timer, Comments, Checklist, etc (Same as v12)
-    function toggleTimer(){ const t=getCurrentTask(); if(!t) return; if(!t.timer)t.timer={totalSeconds:0,isRunning:false}; if(t.timer.isRunning){ t.timer.totalSeconds+=Math.floor((Date.now()-t.timer.lastStartTime)/1000); t.timer.isRunning=false; }else{ t.timer.isRunning=true; t.timer.lastStartTime=Date.now(); } saveAndRender(); updateTimerUI(t); }
+    function toggleTimer(){
+        const t=getCurrentTask(); if(!t) return;
+        if(!t.timer) t.timer={totalSeconds:0,isRunning:false};
+        if(t.timer.isRunning){
+            finalizeTimer(t, Date.now());
+            if(!anyTimerRunning()) stopHeartbeat();
+            logActivity(`⏸ Timer stopped: "${t.name}"`);
+        } else {
+            t.timer.isRunning=true; t.timer.lastStartTime=Date.now();
+            startHeartbeat();
+            logActivity(`▶ Timer started: "${t.name}"`);
+        }
+        saveAndRender(); updateTimerUI(t);
+    }
     function updateTimerUI(t){ if(!t) return; if(!t.timer)t.timer={totalSeconds:0,isRunning:false}; const btn=document.getElementById('m-timer-btn'); btn.innerText=t.timer.isRunning?"⏸ Pause":"▶ Start"; btn.style.background=t.timer.isRunning?"#ef4444":"var(--primary)"; updateTimerDisplay(); }
-    function updateTimerDisplay(){ if(!currentTaskId||!document.getElementById('taskModal').classList.contains('active'))return; const t=getCurrentTask(); if(!t||!t.timer)return; let total=t.timer.totalSeconds; if(t.timer.isRunning)total+=Math.floor((Date.now()-t.timer.lastStartTime)/1000); const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60; document.getElementById('m-time-display').innerText=`${h}h ${m}m ${s}s`; }
-    function cloneTask(){ const t=getCurrentTask(); if(!t) return; const n=JSON.parse(JSON.stringify(t)); n.id='t'+Date.now(); n.name+=" (Copy)"; n.status='todo'; n.timer={totalSeconds:0,isRunning:false}; n.comments=[]; tasks.push(n); saveAndRender(); alert('Cloned'); closeModal('taskModal'); }
-    function renderChecklist(t){ const ul=document.getElementById('m-checklist'); ul.innerHTML=''; let d=0; (t.checklist||[]).forEach((i,x)=>{ if(i.done)d++; ul.innerHTML+=`<li class="checklist-item ${i.done?'done':''}"><input type="checkbox" ${i.done?'checked':''} onchange="toggleCheckItem(${x})"><span style="flex:1">${escapeHtml(i.text)}</span><button data-action="remCheck" data-idx="${x}" aria-label="Remove item" style="color:red;border:none;background:none">×</button></li>` }); document.getElementById('m-progress-bar').style.width=(t.checklist&&t.checklist.length>0?(d/t.checklist.length)*100:0)+'%'; }
+    function elapsedSeconds(t){
+        if(!t || !t.timer) return 0;
+        let total = Number(t.timer.totalSeconds) || 0;
+        if(t.timer.isRunning){
+            const start = Number(t.timer.lastStartTime);
+            // A running timer with no valid start would render "NaNh NaNm NaNs".
+            if(Number.isFinite(start)) total += Math.max(0, Math.floor((Date.now()-start)/1000));
+        }
+        return Math.max(0, total);
+    }
+    function updateTimerDisplay(){
+        if(!currentTaskId||!document.getElementById('taskModal').classList.contains('active'))return;
+        const t=getCurrentTask(); if(!t||!t.timer)return;
+        const total=elapsedSeconds(t);
+        const h=Math.floor(total/3600), m=Math.floor((total%3600)/60), s=total%60;
+        document.getElementById('m-time-display').innerText=`${h}h ${m}m ${s}s`;
+    }
+    function cloneTask(){
+        const t=getCurrentTask(); if(!t) return;
+        const n=normalizeTask(JSON.parse(JSON.stringify(t)));
+        n.id=newId(); n.name=clampStr(t.name+" (Copy)", MAX_NAME_LEN); n.status='todo';
+        n.timer={totalSeconds:0,isRunning:false}; n.comments=[];
+        tasks.push(n); logActivity(`©️ Cloned: "${t.name}"`); saveAndRender();
+        alert(currentLang==='zh'?'已複製':'Cloned'); closeModal('taskModal');
+    }
+    function renderChecklist(t){
+        const items = t.checklist || [];
+        let d = 0;
+        // Single innerHTML write; the checkbox now emits the delegated `toggleCheck` action
+        // that the dispatcher already handled but nothing ever sent.
+        const html = items.map((i, x) => {
+            if (i.done) d++;
+            return `<li class="checklist-item ${i.done?'done':''}"><input type="checkbox" ${i.done?'checked':''} data-action="toggleCheck" data-idx="${x}" aria-label="${escapeHtml(i.text)}"><span style="flex:1">${escapeHtml(i.text)}</span><button data-action="remCheck" data-idx="${x}" aria-label="Remove item" style="color:red;border:none;background:none">×</button></li>`;
+        }).join('');
+        document.getElementById('m-checklist').innerHTML = html;
+        document.getElementById('m-progress-bar').style.width = (items.length ? (d/items.length)*100 : 0) + '%';
+    }
     function addCheckItem(){ const v=document.getElementById('new-check-item').value; if(v){ const t=getCurrentTask(); if(!t) return; if(!t.checklist) t.checklist=[]; t.checklist.push({text:v,done:false}); document.getElementById('new-check-item').value=''; saveAndRender(); renderChecklist(t); } }
     function toggleCheckItem(i){ const t=getCurrentTask(); if(!t||!t.checklist||!t.checklist[i]) return; t.checklist[i].done=!t.checklist[i].done; saveAndRender(); renderChecklist(t); }
     function remCheck(i){ const t=getCurrentTask(); if(!t||!t.checklist||!t.checklist[i]) return; t.checklist.splice(i,1); saveAndRender(); renderChecklist(t); }
     function renderComments(t) { if(!t.comments) t.comments = []; document.getElementById('comment-list').innerHTML = t.comments.map(c => `<li class="comment-item"><div class="comment-header"><span>${escapeHtml(c.author || 'Unknown')}</span> <span>${escapeHtml(c.time)}</span></div><div>${escapeHtml(c.text)}</div></li>`).join(''); }
     function addComment() { const input = document.getElementById('new-comment'); const text = input.value.trim(); const t = getCurrentTask(); if(!t) return; const author = t.assignee || 'Me'; if(text) { if(!t.comments) t.comments = []; const loc = currentLang==='zh' ? 'zh-HK' : 'en-US'; t.comments.push({ text, author, time: new Date().toLocaleString(loc) }); input.value = ''; saveAndRender(); renderComments(t); } }
-    function updateTaskStatus(){ const t=getCurrentTask(); if(!t) return; t.status=document.getElementById('m-status').value; if(t.status==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); }
+    // confetti/Chart come from a CDN; if it's blocked or offline these globals don't exist
+    // and marking a task done used to throw a ReferenceError.
+    function celebrate(){ if (typeof confetti === 'function') { try { confetti({particleCount:100,spread:70,origin:{y:0.6}}); } catch(e){} } }
+    function updateTaskStatus(){
+        const t=getCurrentTask(); if(!t) return;
+        const from=t.status, to=document.getElementById('m-status').value;
+        if(from===to) return;
+        t.status=to;
+        if(to==='done') celebrate();
+        logActivity(`🔀 "${t.name}": ${from} → ${to}`);
+        saveAndRender();
+    }
     function updateTaskMeta(){ const t=getCurrentTask(); if(!t) return; t.assignee=document.getElementById('m-assignee').value; t.priority=document.getElementById('m-priority').value; t.img=document.getElementById('m-img').value; t.desc=document.getElementById('m-desc').value; t.tags=document.getElementById('m-tags').value.split(',').map(x=>x.trim()).filter(x=>x); saveAndRender(); }
-    function deleteCurrentTask(){ if(confirm('Delete?')){ tasks=tasks.filter(k=>k.id!==currentTaskId); saveAndRender(); closeModal('taskModal'); } }
+    function deleteCurrentTask(){
+        const t=getCurrentTask(); if(!t) return;
+        if(!confirm(currentLang==='zh'?`刪除任務「${t.name}」？`:`Delete task "${t.name}"?`)) return;
+        tasks=tasks.filter(k=>k.id!==currentTaskId);
+        logActivity(`🗑 Deleted: "${t.name}"`);
+        saveAndRender(); closeModal('taskModal');
+    }
     function openTeamModal(){ renderTeamList(); const m=document.getElementById('teamModal'); m.classList.add('active'); trapFocus(m); }
-    function addMember(){ const v=clampStr(document.getElementById('new-member-name').value.trim(), MAX_NAME_LEN); if(v&&!members.includes(v)){ members.push(v); saveMembers(); renderTeamList(); renderMembers(); document.getElementById('new-member-name').value=''; } }
-    function removeMember(n){ if(confirm('Remove?')){ members=members.filter(m=>m!==n); saveMembers(); renderTeamList(); renderMembers(); } }
-    function renderTeamList(){ document.getElementById('team-list-display').innerHTML=members.map(m=>`<button style="padding:5px 10px;border:1px solid #ddd;border-radius:15px;background:#fff" data-action="removeMember" data-name="${escapeHtml(m)}">${escapeHtml(m)} ×</button>`).join(''); }
+    function addMember(){ const v=clampStr(document.getElementById('new-member-name').value.trim(), MAX_NAME_LEN); if(v&&!members.includes(v)){ members.push(v); logActivity(`👥 Member added: "${v}"`); saveMembers(); renderTeamList(); renderMembers(); document.getElementById('new-member-name').value=''; } }
+    // A task can reference an assignee who is no longer on the team (removed member, or an
+    // import from another board). Without this option the <select> silently falls back to ""
+    // and the next updateTaskMeta() writes that empty value over the real assignee.
+    function ensureAssigneeOption(sel, assignee){
+        if(!sel || !assignee) return;
+        if(Array.prototype.some.call(sel.options, o => o.value === assignee)) return;
+        const opt=document.createElement('option');
+        opt.value=assignee;
+        opt.textContent=(currentLang==='zh'?'(已移除) ':'(removed) ')+assignee;
+        sel.appendChild(opt);
+    }
+    function removeMember(n){
+        if(!confirm(currentLang==='zh'?`移除隊員「${n}」？`:`Remove member "${n}"?`)) return;
+        const assigned=tasks.filter(t=>t.assignee===n);
+        if(assigned.length){
+            const msg=currentLang==='zh'
+                ? `${assigned.length} 個任務由「${n}」負責。\n\n[確定] 取消指派這些任務\n[取消] 保留指派（顯示為「已移除」）`
+                : `${assigned.length} task(s) are assigned to "${n}".\n\n[OK] Unassign them\n[Cancel] Keep the assignment (shown as "removed")`;
+            if(confirm(msg)){
+                assigned.forEach(t=>{ t.assignee=''; });
+                safeStorageSet('v13_tasks',tasks);
+            }
+        }
+        members=members.filter(m=>m!==n);
+        logActivity(`👥 Member removed: "${n}"`);
+        saveMembers(); renderTeamList(); renderMembers(); renderKanban();
+    }
+    function renderTeamList(){ document.getElementById('team-list-display').innerHTML=members.map(m=>`<button class="member-chip" data-action="removeMember" data-name="${escapeHtml(m)}" aria-label="Remove ${escapeHtml(m)}">${escapeHtml(m)} ×</button>`).join(''); }
     function renderMembers(){ const txt=currentLang==='zh'?'(未指派)':'(Unassigned)'; const all=currentLang==='zh'?'所有成員':'All Members'; const opts=`<option value="">${escapeHtml(txt)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); document.getElementById('t-assignee').innerHTML=opts; document.getElementById('m-assignee').innerHTML=opts; document.getElementById('s-member').innerHTML=`<option value="">${escapeHtml(all)}</option>`+members.map(m=>`<option value="${escapeHtml(m)}">${escapeHtml(m)}</option>`).join(''); }
     function allowDrop(ev){ev.preventDefault();}
-    function drop(ev){ ev.preventDefault(); const id=ev.dataTransfer.getData("text"); const t=ev.target.closest('.task-list'); if(!t) return; const task=tasks.find(k=>k.id===id); if(!task) return; if(task.status!==t.id){ task.status=t.id; if(t.id==='done') confetti({particleCount:100,spread:70,origin:{y:0.6}}); saveAndRender(); } }
+    function drop(ev){
+        ev.preventDefault();
+        const id=ev.dataTransfer.getData("text");
+        const col=ev.target.closest('.task-list'); if(!col) return;
+        if(!STATUSES.includes(col.id)) return;
+        const task=tasks.find(k=>k.id===id); if(!task) return;
+        if(task.status===col.id) return;
+        const from=task.status; task.status=col.id;
+        if(col.id==='done') celebrate();
+        logActivity(`🔀 "${task.name}": ${from} → ${col.id}`);
+        saveAndRender();
+    }
     function openDashboard(){ const m=document.getElementById('dashboardModal'); m.classList.add('active'); renderCharts(); trapFocus(m); }
-    function renderCharts(){ if(window.C1)window.C1.destroy(); if(window.C2)window.C2.destroy(); const sData=['todo','inprogress','onhold','blocked','done'].map(s=>tasks.filter(t=>t.status===s).length); const mCount={}; members.forEach(m=>mCount[m]=0); mCount['Unassigned']=0; tasks.forEach(t=>{mCount[t.assignee||'Unassigned']++}); window.C1=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:['Todo','In Prog','Hold','Blocked','Done'],datasets:[{data:sData,backgroundColor:['#cbd5e1','#3b82f6','#f59e0b','#ef4444','#10b981']}]}}); window.C2=new Chart(document.getElementById('memberChart'),{type:'bar',data:{labels:Object.keys(mCount),datasets:[{label:'Tasks',data:Object.values(mCount),backgroundColor:'#4f46e5'}]}}); }
-    function logActivity(msg){ activities.unshift({msg,time:new Date().toLocaleString()}); if(activities.length>50)activities.pop(); safeStorageSet('v13_activities',activities); }
+    function renderCharts(){ if(typeof Chart!=='function'){ console.warn('[charts] Chart.js unavailable'); return; } if(window.C1)window.C1.destroy(); if(window.C2)window.C2.destroy(); const sData=['todo','inprogress','onhold','blocked','done'].map(s=>tasks.filter(t=>t.status===s).length); const mCount={}; members.forEach(m=>mCount[m]=0); mCount['Unassigned']=0; tasks.forEach(t=>{mCount[t.assignee||'Unassigned']++}); window.C1=new Chart(document.getElementById('statusChart'),{type:'doughnut',data:{labels:['Todo','In Prog','Hold','Blocked','Done'],datasets:[{data:sData,backgroundColor:['#cbd5e1','#3b82f6','#f59e0b','#ef4444','#10b981']}]}}); window.C2=new Chart(document.getElementById('memberChart'),{type:'bar',data:{labels:Object.keys(mCount),datasets:[{label:'Tasks',data:Object.values(mCount),backgroundColor:'#4f46e5'}]}}); }
+    function logActivity(msg){ activities.unshift({msg:clampStr(msg,500),time:new Date().toLocaleString(localeTag())}); while(activities.length>50)activities.pop(); safeStorageSet('v13_activities',activities); }
     function openLogModal(){ document.getElementById('log-list').innerHTML=activities.map(a=>`<li class="log-item"><span>${escapeHtml(a.msg)}</span> <span style="font-size:10px;color:#999">${escapeHtml(a.time)}</span></li>`).join(''); const m=document.getElementById('logModal'); m.classList.add('active'); trapFocus(m); }
     function clearLog(){ activities=[]; safeStorageSet('v13_activities',[]); openLogModal(); }
     function saveAndRender(){ safeStorageSet('v13_tasks',tasks); renderKanban(); }
@@ -703,20 +963,45 @@
         releaseFocusTrap();
     }
     function toggleTheme(){ const d=document.documentElement; const isDark=d.getAttribute('data-theme')==='dark'; d.setAttribute('data-theme',isDark?'light':'dark'); localStorage.setItem('theme',isDark?'light':'dark'); }
-    function exportData(){ const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([JSON.stringify({tasks,members,activities})],{type:'application/json'})); a.download='backup_v13.json'; a.click(); }
+    function exportData(){
+        const a=document.createElement('a');
+        const url=URL.createObjectURL(new Blob([JSON.stringify({version:13,exportedAt:new Date().toISOString(),tasks,members,activities},null,2)],{type:'application/json'}));
+        a.href=url; a.download=`backup_v13_${localDateStr()}.json`; a.click();
+        setTimeout(()=>URL.revokeObjectURL(url), 1000);
+    }
     function importData(e){
         const file = e.target.files && e.target.files[0]; if(!file) return;
         const r = new FileReader();
         r.onload = (ev) => {
             try {
                 const d = JSON.parse(ev.target.result);
-                if (d && Array.isArray(d.tasks))   tasks   = d.tasks;
-                if (d && Array.isArray(d.members)) members = d.members;
+                if (!d || typeof d !== 'object') throw new Error('not an object');
+                if (!Array.isArray(d.tasks) && !Array.isArray(d.members)) throw new Error('no tasks or members');
+
+                if (Array.isArray(d.tasks)) {
+                    // Coerce every row: an unvalidated status used to blank the whole board.
+                    const normalized = d.tasks.map(normalizeTask).filter(Boolean);
+                    const skipped = d.tasks.length - normalized.length;
+                    tasks = normalized;
+                    if (skipped > 0) console.warn(`[import] skipped ${skipped} unreadable task(s)`);
+                }
+                if (Array.isArray(d.members)) members = d.members.filter(m => typeof m === 'string' && m).map(m => clampStr(m, MAX_NAME_LEN));
+                // Export writes activities but import used to throw them away.
+                if (Array.isArray(d.activities)) {
+                    activities = d.activities
+                        .filter(a => a && typeof a === 'object' && typeof a.msg === 'string')
+                        .slice(0, 50)
+                        .map(a => ({ msg: clampStr(a.msg, 500), time: clampStr(a.time, 64) }));
+                    safeStorageSet('v13_activities', activities);
+                }
+                if (!members.length) members = ['Me'];
+
+                logActivity(`⬆️ Imported ${tasks.length} task(s) from ${clampStr(file.name, 80)}`);
                 saveAndRender(); saveMembers(); renderMembers();
                 alert(currentLang==='zh' ? '已還原!' : 'Restored!');
             } catch (err) {
                 console.error('[import] parse failed', err);
-                alert(currentLang==='zh' ? '匯入失敗：檔案格式錯誤' : 'Import failed: invalid JSON file');
+                alert(currentLang==='zh' ? '匯入失敗：檔案格式錯誤' : 'Import failed: invalid or unrecognized backup file');
             } finally {
                 e.target.value = ''; // allow re-import of same file
             }

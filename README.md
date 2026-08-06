@@ -7,7 +7,7 @@
 
 A lightweight, high-performance **Single Page Application (SPA)** for project management. Built with pure HTML, CSS, and Vanilla JavaScript—no frameworks required.
 
-[Explore Demo](https://allan1114-sketch.github.io/my-project-tracker) · [Report Bug](https://github.com/allan1114-sketch/my-project-tracker/issues) · [Request Feature](https://github.com/allan1114-sketch/my-project-tracker/issues)
+[Explore Demo](https://allan1114.github.io/my-project-tracker) · [Report Bug](https://github.com/allan1114/my-project-tracker/issues) · [Request Feature](https://github.com/allan1114/my-project-tracker/issues)
 
 ---
 
