@@ -1,0 +1,29 @@
+{
+  "name": "my-project-tracker",
+  "version": "14.0.0",
+  "private": true,
+  "description": "Kanban, calendar and analytics project tracker with optional Firebase Auth and Postgres sync.",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.112.2",
+    "canvas-confetti": "^1.9.4",
+    "chart.js": "^4.5.1",
+    "firebase": "^12.17.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.8.0",
+    "globals": "^17.9.0",
+    "jsdom": "^30.0.1",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  }
+}

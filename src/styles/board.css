@@ -1,0 +1,83 @@
+/* --- Kanban --- */
+.kanban-board {
+  display: flex; gap: 15px; overflow-x: auto; align-items: flex-start;
+  padding-bottom: 30px; min-height: 500px;
+}
+.column {
+  flex: 1; min-width: 280px; max-width: 350px; background: var(--bg-column);
+  border-radius: 12px; padding: 12px; border: 1px solid var(--border);
+  display: flex; flex-direction: column; max-height: 80vh; transition: 0.3s;
+}
+.column-header {
+  display: flex; justify-content: space-between; margin-bottom: 12px;
+  font-weight: 700; color: var(--text-sub); font-size: 14px; padding: 0 5px;
+}
+.column-header.danger { color: var(--p-high); }
+.task-list { overflow-y: auto; flex: 1; padding: 2px; min-height: 100px; border-radius: 8px; }
+.task-list.drag-over { background: rgba(79, 70, 229, 0.08); outline: 2px dashed var(--primary); }
+
+/* Focus mode hides Done and Blocked */
+.kanban-board.focus-mode #col-blocked,
+.kanban-board.focus-mode #col-done { display: none; }
+
+/* --- Task card --- */
+.task-card {
+  background: var(--bg-card); border-radius: 8px; padding: 12px; margin-bottom: 10px;
+  box-shadow: var(--shadow); border: 1px solid var(--border); cursor: pointer;
+  position: relative; transition: all 0.2s; border-left: 4px solid transparent;
+}
+.task-card:hover { transform: translateY(-3px); box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1); }
+.task-card.overdue {
+  border: 1px solid var(--p-high) !important;
+  border-left: 4px solid var(--p-high) !important;
+  background: #fff5f5;
+}
+[data-theme='dark'] .task-card.overdue { background: #451a1a; }
+
+.card-img { width: 100%; height: 120px; object-fit: cover; border-radius: 4px; margin-bottom: 8px; display: none; }
+.card-img.show { display: block; }
+.card-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+.card-title { font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+.card-meta {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 8px; font-size: 12px; color: var(--text-sub);
+}
+.card-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; margin-bottom: 6px; }
+
+.tag { font-size: 10px; padding: 2px 6px; border-radius: 4px; background: var(--accent-bg); color: var(--accent-text); font-weight: 600; }
+.avatar {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent-bg); color: var(--accent-text);
+  display: flex; justify-content: center; align-items: center; font-size: 10px; font-weight: bold;
+}
+
+.badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.badge.bg-high { background: var(--badge-high-bg); color: var(--badge-high-text); }
+.badge.bg-medium { background: var(--badge-medium-bg); color: var(--badge-medium-text); }
+.badge.bg-low { background: var(--badge-low-bg); color: var(--badge-low-text); }
+
+.member-chip { padding: 5px 10px; border: 1px solid var(--border); border-radius: 15px; background: var(--bg-card); color: var(--text-main); }
+.member-chip:hover { border-color: var(--p-high); color: var(--p-high); }
+
+/* --- Calendar --- */
+#calendar-view, #dashboard-view {
+  display: none; background: var(--bg-card); padding: 20px;
+  border-radius: 12px; border: 1px solid var(--border); box-shadow: var(--shadow);
+}
+.calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+.calendar-day-header { font-weight: bold; text-align: center; color: var(--text-sub); padding-bottom: 10px; }
+.calendar-day {
+  min-height: 100px; border: 1px solid var(--border); border-radius: 6px;
+  padding: 5px; background: var(--bg-column); position: relative;
+}
+.calendar-day.is-blank { background: transparent; border: none; }
+.calendar-day.today { border-color: var(--primary); background: rgba(79, 70, 229, 0.05); }
+.day-num { font-weight: bold; font-size: 12px; margin-bottom: 5px; display: block; }
+.cal-task {
+  font-size: 10px; background: var(--bg-card); border-left: 3px solid var(--primary);
+  padding: 2px 4px; margin-bottom: 2px; border-radius: 3px; cursor: pointer;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+.cal-task.done { text-decoration: line-through; opacity: 0.6; border-left-color: var(--p-low); }

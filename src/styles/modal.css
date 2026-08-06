@@ -1,0 +1,60 @@
+.modal {
+  position: fixed; inset: 0; background: var(--modal-overlay);
+  backdrop-filter: blur(3px); display: flex; justify-content: center; align-items: center;
+  z-index: 2000; opacity: 0; pointer-events: none; transition: 0.2s;
+}
+.modal.active { opacity: 1; pointer-events: all; }
+.modal-content {
+  background: var(--bg-card); width: 700px; max-width: 95%; max-height: 90vh;
+  border-radius: 12px; padding: 25px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  position: relative; overflow-y: auto; display: flex; flex-direction: column; gap: 15px;
+}
+.close-btn {
+  position: absolute; top: 15px; right: 15px; background: none; border: none;
+  font-size: 24px; color: var(--text-sub);
+}
+.modal-title-row { display: flex; justify-content: space-between; align-items: center; margin-right: 30px; }
+.modal-title-row h2 { margin: 0; }
+
+.timer-box {
+  background: var(--bg-column); padding: 10px; border-radius: 6px;
+  display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border);
+}
+.timer-left { display: flex; align-items: center; gap: 10px; }
+#m-timer-btn { background: var(--primary); color: #fff; border: none; padding: 5px 15px; border-radius: 4px; }
+#m-timer-btn.running { background: var(--p-high); }
+
+.checklist-item { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.checklist-item input[type='checkbox'] { width: auto; }
+.checklist-item.done span { text-decoration: line-through; color: var(--text-sub); opacity: 0.6; }
+.checklist-box { background: var(--bg-column); padding: 15px; border-radius: 8px; }
+.checklist-box h4 { margin: 0 0 10px 0; }
+.progress-track { height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; margin-bottom: 10px; }
+.progress-fill { height: 100%; width: 0; background: var(--p-low); transition: 0.3s; }
+.checklist-add { display: flex; margin-top: 10px; gap: 5px; }
+.checklist-add button { background: var(--primary); color: #fff; border: none; padding: 5px 15px; border-radius: 4px; }
+#m-checklist { list-style: none; padding: 0; margin: 0; }
+
+.attachment-list { list-style: none; padding: 0; margin-top: 5px; }
+.attachment-item {
+  display: flex; align-items: center; gap: 10px; padding: 6px;
+  background: var(--bg-column); border-radius: 6px; font-size: 13px;
+  margin-bottom: 5px; border: 1px solid var(--border);
+}
+.attachment-item a { flex: 1; text-decoration: none; color: var(--primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-row { display: flex; gap: 5px; }
+
+.comments-section { margin-top: 10px; border-top: 1px solid var(--border); padding-top: 15px; }
+.comments-section h4 { margin: 0 0 10px 0; }
+.comment-list { list-style: none; padding: 0; max-height: 150px; overflow-y: auto; margin-bottom: 10px; }
+.comment-item { background: var(--bg-column); padding: 8px 12px; border-radius: 8px; margin-bottom: 8px; font-size: 13px; }
+.comment-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 11px; color: var(--text-sub); font-weight: 600; }
+.comment-input-box { display: flex; gap: 10px; }
+
+.log-list { list-style: none; padding: 0; max-height: 300px; overflow-y: auto; }
+.log-item { padding: 8px; border-bottom: 1px solid var(--border); font-size: 13px; color: var(--text-sub); display: flex; justify-content: space-between; gap: 10px; }
+.log-time { font-size: 10px; color: var(--text-sub); white-space: nowrap; }
+
+.modal-row { display: flex; gap: 10px; margin-bottom: 15px; }
+.team-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.text-right { text-align: right; }
