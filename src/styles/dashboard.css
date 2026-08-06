@@ -1,0 +1,51 @@
+.dash-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+.dash-head h2 { margin: 0; }
+.dash-stamp { font-size: 11px; color: var(--text-sub); }
+
+.chart-container { position: relative; height: 300px; width: 100%; }
+.chart-container.tall { height: 340px; }
+.chart-container.short { height: 220px; }
+.chart-row { display: flex; gap: 28px; flex-wrap: wrap; }
+.chart-col { flex: 1; min-width: 280px; }
+.chart-col h3, .dash-section h3 { margin: 0 0 12px 0; font-size: 14px; font-weight: 700; }
+
+/* Legend swatch beside a status name in the table views. */
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 8px; vertical-align: baseline; }
+
+/* --- KPI tiles --- */
+.kpi-grid {
+  display: grid; gap: 12px; margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.kpi-tile {
+  background: var(--bg-column); border: 1px solid var(--border);
+  border-radius: 10px; padding: 14px 16px;
+}
+.kpi-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.04em; color: var(--text-sub); margin-bottom: 6px;
+}
+.kpi-value { font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.kpi-tile.alert .kpi-value { color: var(--p-high); }
+.kpi-tile.good .kpi-value { color: var(--c-done); }
+
+.dash-section { margin-top: 28px; }
+.dash-section h3 { margin: 0 0 12px 0; font-size: 15px; }
+
+.dash-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dash-table th, .dash-table td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
+.dash-table a { color: var(--text-main); text-decoration: none; }
+.dash-table a:hover { color: var(--primary); text-decoration: underline; }
+.dash-table th { color: var(--text-sub); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+.dash-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
+.dash-table tr:last-child td { border-bottom: none; }
+.days-late { color: var(--p-high); font-weight: 700; }
+.dash-empty { color: var(--text-sub); font-size: 13px; padding: 12px 0; }
+
+.table-scroll { overflow-x: auto; }
+
+/* The status table is a legend with numbers, not a data grid — keep the count
+   and share next to the label instead of pushed to the far edge. */
+#status-table .dash-table { max-width: 320px; }
+#status-table td:first-child { width: 60%; }
+#status-table td.num { width: 20%; }

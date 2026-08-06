@@ -1,120 +1,204 @@
-# # my-project-tracker 📋
+# my-project-tracker 📋
 
+[![CI](https://github.com/allan1114/my-project-tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/allan1114/my-project-tracker/actions/workflows/ci.yml)
 [![Language](https://img.shields.io/badge/Language-Vanilla%20JS-yellow.svg)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
-[![Style](https://img.shields.io/badge/Style-CSS3%20%2F%20Flexbox-blue.svg)](https://developer.mozilla.org/en-US/docs/Web/CSS)
-[![Storage](https://img.shields.io/badge/Storage-localStorage-green.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Window/localStorage)
+[![Build](https://img.shields.io/badge/Build-Vite-646cff.svg)](https://vite.dev)
+[![Database](https://img.shields.io/badge/Database-Postgres-336791.svg)](https://www.postgresql.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-purple.svg)](https://opensource.org/licenses/MIT)
 
-A lightweight, high-performance **Single Page Application (SPA)** for project management. Built with pure HTML, CSS, and Vanilla JavaScript—no frameworks required.
+A project management **Single Page Application** — Kanban, calendar and analytics — written in
+vanilla JavaScript with no UI framework. It runs entirely offline against `localStorage`, and
+optionally syncs to Postgres behind a Firebase login.
 
-[Explore Demo](https://allan1114-sketch.github.io/my-project-tracker) · [Report Bug](https://github.com/allan1114-sketch/my-project-tracker/issues) · [Request Feature](https://github.com/allan1114-sketch/my-project-tracker/issues)
+[Explore Demo](https://allan1114.github.io/my-project-tracker) ·
+[Report Bug](https://github.com/allan1114/my-project-tracker/issues) ·
+[Request Feature](https://github.com/allan1114/my-project-tracker/issues)
 
 ---
 
 ## 🚀 核心功能 (Core Features)
 
 ### 1. 看板系統 (Kanban Board)
-Efficiently manage your workflow with a dynamic drag-and-drop interface.
 - **5 狀態欄位**: 待辦 (To Do), 進行中 (In Progress), 暫停 (On Hold), 卡關 (Blocked), 完成 (Done).
-- **拖放功能**: Seamlessly move tasks between columns.
-- **豐富資訊**: Displays priority, tags, owner, cover image, and progress bar at a glance.
+- **拖放功能**: Drag tasks between columns, with a drop-target highlight.
+- **豐富資訊**: Priority badge, tags, owner avatar, cover image and checklist progress at a glance.
 
 ### 2. 日曆視圖 (Calendar View) 📅
-- Monthly overview of all tasks.
-- Visual mapping of deadlines.
-- Intuitive navigation between months.
+Monthly grid of due dates with month-to-month navigation.
 
 ### 3. 進階任務管理 (Task Management) ✅
-Every task is a powerhouse of information:
-- **Metadata**: Priority (High/Med/Low), Assignee, Deadlines.
-- **Tagging**: Categorize with `🐛 Bug`, `✨ Feature`, `🔥 Urgent`, `🎨 Design`.
-- **Sub-tasks**: Interactive checklists with an auto-calculating progress bar.
-- **Tools**: Integrated **Work Timer**, Comment system, and Task Duplication.
-- **Attachments**: Link-based attachments with simulated upload interface.
+- **Metadata**: Priority, assignee, due date, cover image, description.
+- **Tagging**: `🐛 Bug`, `✨ Feature`, `🔥 Urgent`, `🎨 Design`, plus anything you type.
+- **Sub-tasks**: Checklists with an auto-calculating progress bar.
+- **Work timer**: Per-task time tracking that does *not* keep counting while the app is closed.
+- **Comments**, **task duplication**, and link **attachments**.
 
 ### 4. 數據可視化 (Dashboard) 📈
-Powered by **Chart.js**:
-- **Task Distribution**: Doughnut chart for status overview.
-- **Workload Analysis**: Bar chart comparing member assignments.
+A full view, not a popup: six KPI tiles (total, in progress, blocked, overdue, done this week,
+time tracked), a status doughnut, per-assignee workload as a stacked bar, a 30-day completion
+trend, and an overdue table sorted worst-first where every row links to its task.
+
+The five status colours were **measured, not picked** — run through a categorical-palette
+validator (lightness band, chroma floor, colour-vision-deficiency separation, normal-vision
+separation, contrast) against the real light and dark chart surfaces. Two things came out of it:
+the old slate `#94a3b8` read as gray and failed the chroma floor, and amber-on-hold beside
+red-blocked cannot be separated for deuteranopes anywhere in the dark lightness band. Since
+separation is measured on *adjacent* pairs, the charts draw in the order
+`blocked → todo → onhold → inprogress → done` — deliberately not the board's column order — which
+passes every check in both themes. Gold still sits at 2.38:1 on white, so every chart ships a
+legend and the status breakdown is also rendered as a table: identity is never colour alone.
 
 ---
 
 ## 🛠 技術架構 (Technical Stack)
 
-| Category | Technology | Usage |
-| :--- | :--- | :--- |
-| **Frontend** | HTML5 / CSS3 | Semantic structure and responsive Grid/Flexbox layouts. |
-| **Logic** | Vanilla JavaScript | All application logic, DOM manipulation, and state management. |
-| **Charts** | Chart.js | Rendering interactive project analytics. |
-| **Effects** | Canvas-confetti | Celebration animation upon task completion. |
-| **Fonts** | Google Fonts | Inter typeface for modern readability. |
+| Category | Technology |
+| :--- | :--- |
+| **Frontend** | Vanilla JS (ES modules), CSS3 Grid/Flexbox |
+| **Build** | Vite |
+| **Tests** | Vitest + jsdom, ESLint |
+| **Charts** | Chart.js (lazy-loaded) |
+| **Auth** *(optional)* | Firebase Authentication |
+| **Database** *(optional)* | Supabase Postgres with Row-Level Security |
 
-### 資料存儲 (Data Storage)
-The app utilizes `localStorage` for persistent data without a backend:
-- `v13_tasks`: Task data & states.
-- `v13_members`: Team member profiles.
-- `v13_activities`: Audit logs.
-- `lang` / `theme`: User preferences.
+### 專案結構 (Project layout)
 
-v12 data (if present) is automatically merged into v13 on first load.
-
----
-
-## 🛡️ v13.1 Hardening Notes
-
-- **XSS-safe rendering**: all user-supplied fields (task names, tags, comments, attachments, member names, log entries) are HTML-escaped; inline `onclick` interpolation has been replaced with delegated `data-action` handlers.
-- **URL allowlist**: attachment/image URLs are filtered to `http(s)`/`mailto` — `javascript:` / `data:` schemes render as inert.
-- **Resilient storage**: corrupt `localStorage` no longer halts boot; quota errors are surfaced to the user.
-- **Timer & chart lifecycle**: the 1-second timer interval only runs while a task modal is open; Chart.js instances are destroyed on dashboard close. Switching between tasks finalizes the previous task's running timer.
-- **a11y**: icon-only buttons have `aria-label`s; modals trap focus; priority indicators include emoji (not color alone).
-- **Search debounce**: keyword/tag filters debounce 300 ms to stay smooth on large boards.
-- **Import safety**: malformed JSON imports show an error instead of crashing.
-
----
-
-## 🎨 設計特色 (Design Highlights)
-
-- **Modern UI**: Clean Indigo-based (#4f46e5) color palette with card-based design and fluid transitions.
-- **Dark Mode**: Toggle between light and dark themes effortlessly.
-- **Focus Mode**: Hide "Done" and "Blocked" columns to reduce clutter.
-- **UX Polish**:
-  - **Auto-Sort**: Tasks automatically reorder based on priority.
-  - **Visual Alerts**: Red borders for overdue tasks.
-  - **Bilingual**: Instant switch between Traditional Chinese and English.
+```
+index.html              markup shell only
+src/
+  main.js               bootstrap + delegated event wiring
+  state.js              in-memory store, notifies subscribers
+  i18n.js               zh-HK / en-US string table
+  backup.js             JSON export + import
+  timer-sync.js         keeps work timers honest across sessions
+  util/                 dom, storage, task shape + normalizer
+  auth/                 Firebase Auth facade
+  storage/              local (localStorage) and supabase (Postgres) adapters
+  views/                kanban, calendar, task-modal, team, log, dashboard
+  styles/               base, board, modal, dashboard
+supabase/migrations/    SQL schema with RLS policies
+tests/                  Vitest unit tests
+```
 
 ---
 
-## ⌨️ 鍵盤快捷鍵 (Keyboard Shortcuts)
+## 📦 安裝與使用 (Getting started)
+
+```bash
+npm install
+npm run dev      # dev server with hot reload
+npm test         # unit tests
+npm run lint     # ESLint
+npm run build    # production bundle into dist/
+```
+
+With no configuration the app runs in **guest mode**: everything is stored in `localStorage`,
+exactly as it always has. No account required.
+
+---
+
+## ☁️ 雲端同步設定 (Optional cloud sync)
+
+Login is handled by **Firebase Auth**; data lives in **Supabase Postgres**. Firebase has no SQL
+product — Firestore and RTDB are NoSQL document stores — so identity and storage are split, and
+Supabase's Third-Party Auth accepts the Firebase ID token directly. Row-Level Security compares
+`auth.jwt() ->> 'sub'` (the Firebase UID) against each row's `owner_uid`, so no custom backend or
+token-exchange server is involved.
+
+### 1. Firebase (login)
+1. Create a project at [console.firebase.google.com](https://console.firebase.google.com).
+2. **Authentication → Sign-in method →** enable **Google**.
+3. **Authentication → Settings → Authorized domains →** add your deploy domain
+   (`allan1114.github.io`) and `localhost`.
+4. **Project settings → Your apps → Web app** — copy the config values.
+
+### 2. Supabase (storage)
+1. Create a project at [supabase.com/dashboard](https://supabase.com/dashboard).
+2. Run `supabase/migrations/0001_init.sql` in the SQL editor (or `supabase db push`).
+3. **Authentication → Sign In / Providers → Third-Party Auth →** add **Firebase**, entering your
+   Firebase project ID. Without this step `auth.jwt()` carries no Firebase claims and every query
+   returns zero rows.
+4. **Project Settings → Data API** — copy the URL and the publishable `anon` key.
+
+### 3. Configure
+```bash
+cp .env.example .env.local   # then fill in the values
+```
+
+For the GitHub Pages deploy, set the same names as **repository variables**
+(Settings → Secrets and variables → Actions → Variables); `.github/workflows/deploy.yml` reads them.
+
+> **On these keys:** the Firebase API key and the Supabase `anon` key are *public client
+> identifiers*. They ship inside the JavaScript bundle by design, and access is controlled by
+> Firebase Auth settings and Postgres RLS — not by keeping them hidden. The Supabase
+> `service_role` key is a genuine secret and must never appear in this project.
+
+### First sign-in
+If the browser already holds a guest board, signing in offers a one-time upload into your
+account. It only offers this when the cloud account is empty, it always asks first, and your local
+copy is never deleted.
+
+---
+
+## 🗄 資料庫結構 (Database schema)
+
+Normalized rather than a JSON blob per task:
+
+| Table | Purpose |
+| :--- | :--- |
+| `members` | Team members, unique per `(owner_uid, name)` |
+| `tasks` | Core task row; `status` and `priority` are `CHECK`-constrained |
+| `task_tags` | Tags, composite PK on `(task_id, tag)` |
+| `checklist_items` | Sub-tasks with explicit ordering |
+| `comments` | Per-task discussion |
+| `attachments` | Link and file references |
+| `activities` | Audit log, capped at 50 entries |
+
+Every table has RLS enabled. Owner-scoped tables compare `owner_uid` to the Firebase UID directly;
+child tables authorize through their parent task via a single shared `owns_task()` predicate, so a
+new child table cannot accidentally be given a weaker rule.
+
+---
+
+## 🛡️ Hardening notes
+
+- **XSS-safe rendering**: every user-supplied field is HTML-escaped; there are no inline event
+  handlers, and nothing is exposed on `window`.
+- **URL allowlist**: attachment and image URLs must be absolute `http(s)`/`mailto`. Relative input
+  is rejected rather than resolved against the app's own origin.
+- **Resilient storage**: corrupt `localStorage` never halts boot, and quota errors surface to the user.
+- **Input validation**: every task — typed, cloned, imported, or read from Postgres — passes through
+  `normalizeTask()`, so an unrecognized status can't reach the renderer.
+- **Honest timers**: a timer left running when the tab closes is reconciled against a heartbeat, so
+  time the app spent closed is never billed to a task.
+- **a11y**: icon-only buttons carry `aria-label`s, modals trap focus, priority is conveyed by emoji
+  as well as colour, `<html lang>` tracks the selected language, and pinch-zoom is not disabled.
+
+---
+
+## 🎨 設計特色 (Design highlights)
+
+- **Dark mode** across every surface, including tags, avatars, chips and charts.
+- **Focus Mode**: hide Done and Blocked to reduce clutter.
+- **Auto-Sort** by priority, **overdue** highlighting, and **bilingual** zh-HK / en-US switching.
+
+## ⌨️ 鍵盤快捷鍵 (Keyboard shortcuts)
 
 | Key | Action |
 | :---: | :--- |
-| <kbd>N</kbd> | Create New Task |
-| <kbd>Esc</kbd> | Close Current Modal / Popup |
+| <kbd>N</kbd> | Create new task (ignored while a modal is open) |
+| <kbd>Esc</kbd> | Close the current modal |
 
 ---
 
-## 📦 安裝與使用 (Installation)
+## 🧪 開發 (Contributing)
 
-Since this is a pure Vanilla JS project, no installation is required.
-
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/my-project-tracker.git
-   ```
-2. Open `index.html` in any modern web browser.
-3. (Optional) Use **Live Server** in VS Code for a better development experience.
+`npm test` covers the pure logic — the task normalizer, timer arithmetic, filters, backup
+parsing, the v12 migration and every dashboard aggregation. `npm run lint` and `npm run build`
+round out what CI checks on each PR. If you touch the chart palette, re-run it through a
+categorical-palette validator against both surfaces rather than eyeballing the result.
 
 ---
 
-## 🤝 適用場景 (Use Cases)
-
-- 🧑‍💻 **個人專案管理**: Track your side projects and learning progress.
-- 👥 **小型團隊協作**: Manage small team tasks without complex software overhead.
-- 🏃 **Agile/Scrum**: Use the Kanban for daily standup tracking.
-- ✅ **待辦事項管理**: A robust alternative to simple To-Do lists.
-
-
----
-
-**Built with ❤️ by Alan **
+**Built with ❤️ by Alan**
 *If you find this project useful, give it a ⭐!*
