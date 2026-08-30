@@ -1,0 +1,25 @@
+rules_version = '2';
+
+// Access control for the project board.
+//
+// The Firebase API key ships inside the JavaScript bundle by design, so these
+// rules — not the key — are the only thing separating one user's board from
+// another's. This is the Firestore counterpart of the Row-Level Security
+// policies in supabase/migrations/0001_init.sql.
+//
+// Every document lives under users/{uid}, so one rule covers tasks, the member
+// list and the activity log, and a collection added later cannot accidentally
+// be given a weaker rule.
+//
+// Deploy with: firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    // Anything outside a user's own subtree is denied: no default-allow rule.
+  }
+}
