@@ -2,7 +2,7 @@
   "name": "my-project-tracker",
   "version": "14.0.0",
   "private": true,
-  "description": "Kanban, calendar and analytics project tracker with optional Firebase Auth and Postgres sync.",
+  "description": "Kanban, calendar and analytics project tracker with optional Firebase Auth and Firestore sync.",
   "type": "module",
   "scripts": {
     "dev": "vite",

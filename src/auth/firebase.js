@@ -2,11 +2,12 @@
  * Firebase Authentication.
  *
  * Loaded only when VITE_FIREBASE_* is configured. Firebase issues the identity;
- * the ID token is then handed to Supabase, whose Row-Level Security policies
- * key off the Firebase UID in the token's `sub` claim.
+ * storage then authorizes against it — Firestore security rules match
+ * `request.auth.uid` directly, and the Supabase adapter hands the same ID token
+ * to Postgres RLS, which reads the UID from the token's `sub` claim.
  *
  * The API key here is a public client identifier, not a secret — access is
- * controlled by Firebase Auth settings and Postgres RLS, not by hiding it.
+ * controlled by Firebase Auth settings and those storage rules, not by hiding it.
  */
 
 import { initializeApp, getApps } from 'firebase/app';
@@ -24,10 +25,21 @@ const config = {
 
 let auth = null;
 
+/**
+ * The initialized Firebase app, created once.
+ *
+ * Exported so the Firestore adapter can reuse this app rather than calling
+ * initializeApp() a second time. Firestore is deliberately not imported in
+ * this module: doing so would pull it into the auth chunk for guest users who
+ * never sign in.
+ */
+export function ensureApp() {
+  return getApps().length ? getApps()[0] : initializeApp(config);
+}
+
 function ensureAuth() {
   if (auth) return auth;
-  const app = getApps().length ? getApps()[0] : initializeApp(config);
-  auth = getAuth(app);
+  auth = getAuth(ensureApp());
   return auth;
 }
 
@@ -74,7 +86,7 @@ export async function signOutUser() {
   await signOut(ensureAuth());
 }
 
-/** Fresh ID token for Supabase. Firebase refreshes it automatically when stale. */
+/** Fresh ID token for the Supabase adapter. Firebase refreshes it when stale. */
 export async function getIdToken() {
   return ensureAuth().currentUser?.getIdToken() ?? null;
 }

@@ -66,11 +66,37 @@ export async function initAuth(opts = {}) {
   });
 }
 
+/**
+ * Which cloud backend a signed-in session uses.
+ *
+ * Firestore is the default: it needs nothing beyond the Firebase project that
+ * already provides login. Supabase is chosen when its keys are present so that
+ * a deployment already storing boards in Postgres keeps loading them after
+ * this change rather than opening onto an empty Firestore. Set
+ * VITE_CLOUD_BACKEND to force either one.
+ */
+export function cloudBackend() {
+  const forced = import.meta.env.VITE_CLOUD_BACKEND;
+  if (forced === 'firestore' || forced === 'supabase') return forced;
+  const supabaseConfigured = Boolean(
+    import.meta.env.VITE_SUPABASE_URL && import.meta.env.VITE_SUPABASE_ANON_KEY
+  );
+  return supabaseConfigured ? 'supabase' : 'firestore';
+}
+
+async function createCloudAdapter(nextUser) {
+  if (cloudBackend() === 'supabase') {
+    const { createSupabaseAdapter } = await import('../storage/supabase.js');
+    return createSupabaseAdapter(nextUser);
+  }
+  const { createFirestoreAdapter } = await import('../storage/firestore.js');
+  return createFirestoreAdapter(nextUser);
+}
+
 async function adapterForUser(nextUser) {
   if (!nextUser) return createLocalAdapter();
   try {
-    const { createSupabaseAdapter } = await import('../storage/supabase.js');
-    const cloud = await createSupabaseAdapter(nextUser);
+    const cloud = await createCloudAdapter(nextUser);
     // First sign-in on a browser that already has a guest board: offer to
     // bring it along rather than presenting an empty account.
     const { offerMigration } = await import('../storage/migrate.js');
